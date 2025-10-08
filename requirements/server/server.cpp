@@ -152,7 +152,8 @@ void	server::run()
 
 	while (true)
 	{
-		int fd_ready = poll(&this->_fds[0], this->_fds.size(), -1);
+		int fd_ready = poll(&this->_fds[0], this->_fds.size(), 0);
+
 		if (fd_ready < 0)
 		{
 			if (errno == EINTR)
@@ -163,37 +164,41 @@ void	server::run()
 			break;
 		}
 
-		if (this->_fds[0].revents != 0 & POLLIN)
+		if (fd_ready > 0)
 		{
-			struct sockaddr_storage	clientAddr;
-			socklen_t	addrLen = sizeof(clientAddr);
-			int clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
-			if (clientFd < 0)
+			if (this->_fds[0].revents != 0 & POLLIN)
 			{
-				perror("accept");
-				continue;
+				struct sockaddr_storage	clientAddr;
+				socklen_t	addrLen = sizeof(clientAddr);
+				int clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
+				if (clientFd < 0)
+				{
+					perror("accept");
+					continue;
+				}
+
+				struct pollfd	serverPoll;
+				serverPoll.fd = clientFd;
+				serverPoll.events = POLLIN;
+				this->_fds.push_back(serverPoll);
+
+				//pour ajouter le client au serveur, surement verifier son nick tout ca tout ca
+				this->createClient(clientFd);
+
+				std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
 			}
 
-			struct pollfd	serverPoll;
-			serverPoll.fd = clientFd;
-			serverPoll.events = POLLIN;
-			this->_fds.push_back(serverPoll);
-
-			//pour ajouter le client au serveur, surement verifier son nick tout ca tout ca
-			this->createClient(clientFd);
-
-			std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
-		}
-
-		for (int i = 1; i < this->_fds.size(); i++)
-		{
-			if (this->_fds[i].revents != 0 & POLLIN)
+			for (int i = 1; i < this->_fds.size(); i++)
 			{
-				std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
-				void*	buffer = this->_clients[i].getBuffer();
-				while (read(this->_fds[i].fd, buffer, 512) > 0)
+				if (this->_fds[i].revents != 0 & POLLIN)
 				{
-					//envyer le buffer au fonction de parsing
+					std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
+					void*	buffer = this->_clients[i].getBuffer();
+					while (read(this->_fds[i].fd, buffer, 512) > 0)
+					{
+						read(this->_fds[i].fd, buffer, 512);
+					}
+					parsing(buffer);//fonction pour parser le message
 				}
 			}
 		}
@@ -202,3 +207,4 @@ void	server::run()
 }
 
 /*---------------------------------------*/
+
