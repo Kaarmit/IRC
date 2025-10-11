@@ -1,3 +1,4 @@
+
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
@@ -23,18 +24,18 @@
 class server
 {
 	private:
-		std::vector<struct pollfd>	_fds;
-		std::vector<client>	_clients;
+		std::vector<struct pollfd>		_fds;
+		std::vector<client>				_clients;
 		std::map<std::string, channel>	_channels;
-		std::string	_passWord;
-		int	_serverFd;
-		int	_port;
+		std::string						_passWord;
+		int								_serverFd;
+		int								_port;
 
 	public:
 		server(std::string port, std::string mdp);
 		~server();
 
-		void	initSocket(int port);
+		void	initServSocket(int port);
 		void	run();
 
 		std::string	getPassWord() const;
