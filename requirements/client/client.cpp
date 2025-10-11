@@ -1,14 +1,13 @@
+
 #include "client.hpp"
 
 client::client()
 {
 }
 
-client::~client()
-{
+client::client(int clientFd): _fd(clientFd) {
 }
 
-void*	client::getBuffer() const
+client::~client()
 {
-	return this->_buffer;
 }
