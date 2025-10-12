@@ -146,14 +146,71 @@ void	server::initServSocket(int port)
 
 /*---------------------------------------*/
 
-/*----------PROGRAMME-------------*/
+/*----------PARSING-------------*/
 
-bool	parsing(client& c, char* rawMsg) {
-	std::stringstream		ss(rawMsg);
-
-
-
+bool	checkPrefix(std::string prfx) {
+	if (prfx.empty())
+		return (true);
+	return (false);
 }
+
+bool	onlyDigits(std::string s) {
+	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
+		if (*it < '0' && *it > '9')
+			return (false);
+	}
+	return (true);
+}
+
+bool	onlyUpperCase(std::string s) {
+	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
+		if (*it < 'A' && *it > 'Z')
+			return (false);
+	}
+	return (true);
+}
+
+bool	checkCommand(std::string command) {
+	if ((onlyDigits(command) && command.size() != 3) || !onlyUpperCase(command))
+		return (false);
+	return (true);
+}
+
+bool	checkParams(std::vector<std::string> params) {
+	if (params.size() > 15)
+		return (false);
+	return (true);
+}
+
+bool	parsing(client* c, char* rawMsg) {
+	std::istringstream		ss(rawMsg);
+	std::string	rawMsgStr = ss.str();
+	std::string					prfx;
+	std::string					cmd;
+	std::string					prm;
+
+	c->getMessage()->clearMessage();
+	size_t len = rawMsgStr.size();
+	if (rawMsgStr.find_last_of('\r') != (len-2) && rawMsgStr.find_last_of('\n') != (len-1))
+		return (false);
+	if (rawMsgStr.front() == ':') {
+		ss >> prfx;
+		c->getMessage()->setPrefix(prfx);
+	}
+	ss >> cmd;
+	c->getMessage()->setCommand(cmd);
+	while(ss >> prm) {
+		c->getMessage()->setParams(prm);
+		prm.clear();
+	}
+	if (!checkPrefix(c->getMessage()->getPrefix()) || !checkCommand(c->getMessage()->getCommand()) || !checkParams(c->getMessage()->getParams()))
+		return (false); // il faut completer les fonctions check selon les criteres de RFC
+	return (true);
+}
+
+/*---------------------------------------*/
+
+/*----------PROGRAMME-------------*/
 
 void	server::run() {
 	struct pollfd	pollingRequestServ;
@@ -192,17 +249,21 @@ void	server::run() {
 					}
 					else {
 						std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
-						char*	buffer = NULL;
-						if (read(this->_fds[i].fd, buffer, 512) > 0) {
-							parsing(this->_clients[i - 1], buffer);//fonction pour parser le message
+						char *buffer = NULL;
+						if (recv(this->_fds[i].fd, buffer, 512, 0) == -1) {
+							if (errno != EAGAIN) 
+								fprintf(stderr, "Erreur de recv(): %s\n", strerror(errno));
 						}
-
+						else {
+							if (parsing(&(this->_clients[i - 1]), buffer)) {
+								//send() bref faut voir
+							}
+						}	
 					}	
-				}	
+				}
 			}
 		}
 	}
 }
-
 /*---------------------------------------*/
 

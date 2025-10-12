@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/07 14:05:18 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/11 16:18:32 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/10/12 15:48:35 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,13 +21,13 @@ class client
 {
 	private :
 
-		int 											_fd;
-		std::string								_nick;
-		std::string   						_username;
-		std::string   						_realname;
-		message										_msg;
+		int 						_fd;
+		std::string					_nick;
+		std::string   				_username;
+		std::string   				_realname;
+		message*					_msg;
 		std::vector<std::string> 	_channels;
-		bool 											_registered;
+		bool 						_registered;
 		
 		client();
 
@@ -35,6 +35,8 @@ class client
 
 		client(int clientFd);
 		~client();
+
+		message*					getMessage(void) const;
 
 };
 
