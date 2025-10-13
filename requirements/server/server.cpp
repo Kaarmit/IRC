@@ -1,3 +1,4 @@
+
 #include "server.hpp"
 
 /*---------CONSTRUCTOR/DESTRUCTOR-----------*/
@@ -8,7 +9,7 @@ server::server(std::string port, std::string mdp) : _passWord(mdp)
 	oss >> this->_port;
 
 	std::cout << "Initialisation du Serveur IRC" << std::endl;
-	this->initSocket(this->_port);
+	this->initServSocket(this->_port);
 	std::cout << "Server pret." << std::endl;
 	this->run();
 }
@@ -38,14 +39,16 @@ int	server::getPort() const
 }
 /*-------------------------*/
 
-/*----------CREATION DU SOCKET-------------*/
+/*----------CREATION DU SOCKET DECOUTE-------------*/
 
-int	createSocket(int port)
-{
-	//on creer toutes les variables dont o aura besoin
-	struct addrinfo	hints, *res = NULL, *p = NULL;
-	int	status, sockfd = -1, reuse = 1, v6only_off = 0;
-
+int	createServSocket(int port) {
+	//on creer toutes les variables dont on aura besoin
+	int	status; 
+	int serverFd = -1;
+	int reuse = 1;
+	int v6only_off = 0;
+	struct addrinfo	hints, *res = NULL;
+	
 	//on init la structure d'addresse
 	//en initialisant a 0 avec memset
 	//on donne la famille des deux type d'ip(4 et 6)
@@ -54,157 +57,213 @@ int	createSocket(int port)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
+	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_flags = AI_PASSIVE; //uniquement pour le socket server
 
-	//donne une liste chainee d'addr qui respect les options ci-dessus dans res
+	// donne une liste chainee d'addr IP qui respecte les options ci-dessus
+	// 1. node = addr IP literal ou nom dhote a resoudre; NULL pour serv
+	// 2. port ou nom de service 
+	// 3. structure d'addrinfo avc toutes les options quon veut
+	// 4. pointeur sur pointeur ou getaddrinfo() place la liste chaine 9chaque element a un sockaddr)
 	status = getaddrinfo(NULL, "6667", &hints, &res);
-	if (status != 0)
-	{
-		perror("getaddrinfo");
+	if (status != 0) {
+		fprintf(stderr, "Erreur de getaddrinfo(): %s\n", gai_strerror(status));		
 		exit(1);
 	}
 
-	//ici on va regarder dans la liste chainee quelle addresse on peu utiliser
-	for (p = res; p != NULL; p= p->ai_next)
-	{
-		//creer un socket avec : domain(famille d'addresses) = ipv4, type(de communication) = tcp, protocol = default
-		sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-		if (sockfd < 0)
-			continue;
-
-		//on configure des options sur le socket sockfd
-		//le niveau de l'option est SOL_SOCKET, niveau general du socket, TCP/IP ici
-		//l'option qu'on veut activer est SO_REUSEADDR pour  qu'on puisse utiliser la meme addr/port apres une deco rapide
-		//la valeur de l'option sera 1
-		//et sa taille en octet
-		//tout ca pour les addresse ipv6
-		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
-		{
-			close(sockfd);
-			sockfd = -1;
-			continue;
-		}
-		//autorise le socket ipv6 a accepter aussi les connexions ipv4
-		//permet d'avoir un seul socket pour deux protocoles
-		if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &v6only_off, sizeof(v6only_off)) < 0)
-		{
-			if (errno != ENOPROTOOPT)
-			{
-				close(sockfd);
-				sockfd = -1;
-				continue;
-			}
-		}
-		//on bind le socket a l'addresse qu'on a trouve et on sort de la boucle(“assigning a name to a socket”)
-		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == 0)
-			break;
-		//si le bind a echoue alors on continue
-		close(sockfd);
-		sockfd = -1;
+	//creer un socket avec : domain(famille d'addresses) = ipv6, type(de communication) = tcp, protocol = default
+	serverFd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (serverFd < 0) {
+		fprintf(stderr, "Erreur de socket(): %s\n", strerror(errno));
+		freeaddrinfo(res);
+		exit(1);
 	}
-
+	//on rend le serverFd non bloquant
+	int flag = fcntl(serverFd, F_GETFL, 0);
+	if (flag < 0) {
+		fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
+		freeaddrinfo(res);
+		close(serverFd);
+		exit(1);
+	}
+	if (fcntl(serverFd, F_SETFL, flag | O_NONBLOCK) < 0) {
+		fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
+		freeaddrinfo(res);
+		close(serverFd);
+		exit(1); 
+	}
+	//on configure des options sur le socket serverFd
+	//le niveau de l'option est SOL_SOCKET, niveau general du socket, TCP/IP ici
+	//l'option qu'on veut activer est SO_REUSEADDR pour  qu'on puisse utiliser la meme addr/port apres une deco rapide
+	//la valeur de l'option sera 1
+	//et sa taille en octet
+	//tout ca pour les addresse ipv6
+	if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+		fprintf(stderr, "Erreur de setsockopt() reuse: %s\n", strerror(errno));
+		freeaddrinfo(res);
+		close(serverFd);
+		exit(1);
+	}
+	//autorise le socket ipv6 a accepter aussi les connexions ipv4
+	//permet d'avoir un seul socket pour deux protocoles
+	if (setsockopt(serverFd, IPPROTO_IPV6, IPV6_V6ONLY, &v6only_off, sizeof(v6only_off)) < 0) {
+		fprintf(stderr, "Erreur de setsockopt() IPv6_only off: %s\n", strerror(errno));
+		freeaddrinfo(res);
+		close(serverFd);
+		exit(1);
+	}
+	//on bind le socket a l'addresse qu'on a trouve (“assigning a name to a socket”)
+	if (bind(serverFd, res->ai_addr, res->ai_addrlen) < 0) {
+		fprintf(stderr, "Erreur de bind(): %s\n", strerror(errno));
+		freeaddrinfo(res);
+		close(serverFd);
+		exit(1);
+	}
 	//on free le res et derniere verif
 	freeaddrinfo(res);
-	if (sockfd < 0)
-	{
-		perror("sockfd");
+	if (serverFd < 0) {
+		fprintf(stderr, "Erreur: socket corrompu");
+		close(serverFd);
 		exit(1);
 	}
-
 	//on met le socket en mode ecoute
 	//creer une liste d'attente pour les connexions avec le max de personne dans la queue
-	if (listen(sockfd, SOMAXCONN) < 0)
+	if (listen(serverFd, SOMAXCONN) < 0)
 	{
-		perror("listen");
-		close(sockfd);
-		exit(1);
-	}
-
-	//on rend le sockfd non bloquant
-	int flag = fcntl(sockfd, F_GETFL, 0);
-	if (flag < 0 || fcntl(sockfd, F_SETFL, flag | O_NONBLOCK) < 0)
-	{
-		perror("fcntl");
-		close(sockfd);
+		fprintf(stderr, "Erreur de listen(): %s\n", strerror(errno));
+		close(serverFd);
 		exit(1);
 	}
 
 	std::cout << "Serveur en ecoute sur le port " << port << std::endl;
-	return sockfd;
+	return serverFd;
 }
 
-void	server::initSocket(int port)
+void	server::initServSocket(int port)
 {
-	this->_serverFd = createSocket(port);
+	this->_serverFd = createServSocket(port);
 }
 
 /*---------------------------------------*/
 
+/*----------PARSING-------------*/
+
+bool	checkPrefix(std::string prfx) {
+	if (prfx.empty())
+		return (true);
+	return (false);
+}
+
+bool	onlyDigits(std::string s) {
+	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
+		if (*it < '0' && *it > '9')
+			return (false);
+	}
+	return (true);
+}
+
+bool	onlyUpperCase(std::string s) {
+	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
+		if (*it < 'A' && *it > 'Z')
+			return (false);
+	}
+	return (true);
+}
+
+bool	checkCommand(std::string command) {
+	if ((onlyDigits(command) && command.size() != 3) || !onlyUpperCase(command))
+		return (false);
+	return (true);
+}
+
+bool	checkParams(std::vector<std::string> params) {
+	if (params.size() > 15)
+		return (false);
+	return (true);
+}
+
+bool	parsing(client* c, char* rawMsg) {
+	std::istringstream		ss(rawMsg);
+	std::string	rawMsgStr = ss.str();
+	std::string					prfx;
+	std::string					cmd;
+	std::string					prm;
+
+	c->getMessage()->clearMessage();
+	size_t len = rawMsgStr.size();
+	if (rawMsgStr.find_last_of('\r') != (len-2) && rawMsgStr.find_last_of('\n') != (len-1))
+		return (false);
+	if (rawMsgStr.front() == ':') {
+		ss >> prfx;
+		c->getMessage()->setPrefix(prfx);
+	}
+	ss >> cmd;
+	c->getMessage()->setCommand(cmd);
+	while(ss >> prm) {
+		c->getMessage()->setParams(prm);
+		prm.clear();
+	}
+	if (!checkPrefix(c->getMessage()->getPrefix()) || !checkCommand(c->getMessage()->getCommand()) || !checkParams(c->getMessage()->getParams()))
+		return (false); // il faut completer les fonctions check selon les criteres de RFC
+	return (true);
+}
+
+/*---------------------------------------*/
 
 /*----------PROGRAMME-------------*/
 
-void	server::run()
-{
-	struct pollfd	serverPoll;
-	serverPoll.fd = this->_serverFd;
-	serverPoll.events = POLLIN;
-	this->_fds.push_back(serverPoll);
+void	server::run() {
+	struct pollfd	pollingRequestServ;
+	pollingRequestServ.fd = this->_serverFd;
+	pollingRequestServ.events = POLLIN;
+	this->_fds.push_back(pollingRequestServ);
 
-	while (true)
-	{
+	while (true) {
 		int fd_ready = poll(&this->_fds[0], this->_fds.size(), 0);
-
-		if (fd_ready < 0)
-		{
-			if (errno == EINTR)
-			{
+		if (fd_ready < 0) {
+			if (errno == EINTR) // ?
 				continue; //et gestion du ctrl+C
-			}
-			perror("poll");
+			fprintf(stderr, "Erreur de poll(): %s\n", strerror(errno));
 			break;
 		}
+		if (fd_ready > 0) {
+			for (int i = 0; i < this->_fds.size(); i++) {
+				if (this->_fds[i].revents & POLLIN) {
+					if (i == 0) {
+						struct sockaddr_storage	clientAddr;
+						socklen_t	addrLen = sizeof(clientAddr);
+						int clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
+						if (clientFd < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+							fprintf(stderr, "Erreur de accept(): %s\n", strerror(errno));
+							continue;
+						}
 
-		if (fd_ready > 0)
-		{
-			if (this->_fds[0].revents != 0 & POLLIN)
-			{
-				struct sockaddr_storage	clientAddr;
-				socklen_t	addrLen = sizeof(clientAddr);
-				int clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
-				if (clientFd < 0)
-				{
-					perror("accept");
-					continue;
-				}
+						struct pollfd	pollingRequestClient;
+						pollingRequestClient.fd = clientFd;
+						pollingRequestClient.events = POLLIN;
+						this->_fds.push_back(pollingRequestClient);
+						std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
 
-				struct pollfd	serverPoll;
-				serverPoll.fd = clientFd;
-				serverPoll.events = POLLIN;
-				this->_fds.push_back(serverPoll);
-
-				//pour ajouter le client au serveur, surement verifier son nick tout ca tout ca
-				this->createClient(clientFd);
-
-				std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
-			}
-
-			for (int i = 1; i < this->_fds.size(); i++)
-			{
-				if (this->_fds[i].revents != 0 & POLLIN)
-				{
-					std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
-					void*	buffer = this->_clients[i].getBuffer();
-					while (read(this->_fds[i].fd, buffer, 512) > 0)
-					{
-						read(this->_fds[i].fd, buffer, 512);
+						client	newClient(clientFd);
+						this->_clients.push_back(newClient);
 					}
-					parsing(buffer);//fonction pour parser le message
+					else {
+						std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
+						char *buffer = NULL;
+						if (recv(this->_fds[i].fd, buffer, 512, 0) == -1) {
+							if (errno != EAGAIN) 
+								fprintf(stderr, "Erreur de recv(): %s\n", strerror(errno));
+						}
+						else {
+							if (parsing(&(this->_clients[i - 1]), buffer)) {
+								//send() bref faut voir
+							}
+						}	
+					}	
 				}
 			}
 		}
 	}
-
 }
-
 /*---------------------------------------*/
 
