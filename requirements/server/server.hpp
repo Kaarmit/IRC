@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <cerrno>
 
 #include "../client/client.hpp"
 #include "../channel/channel.hpp"
@@ -25,22 +26,22 @@ class server
 {
 	private:
 		std::vector<struct pollfd>		_fds;
-		std::vector<client>				_clients;
+		std::vector<client *>			_clients;
 		std::map<std::string, channel>	_channels;
 		std::string						_passWord;
 		int								_serverFd;
-		int								_port;
+		char*							_port;
 
 	public:
-		server(std::string port, std::string mdp);
+		server(char* port, char* pwd);
 		~server();
 
-		void	initServSocket(int port);
+		void	initServSocket(char* port);
 		void	run();
 
 		std::string	getPassWord() const;
-		int	getFd() const;
-		int	getPort() const;
+		int			getFd() const;
+		char*		getPort() const;
 };
 
 #endif

@@ -2,11 +2,9 @@
 #include "server.hpp"
 
 /*---------CONSTRUCTOR/DESTRUCTOR-----------*/
-server::server(std::string port, std::string mdp) : _passWord(mdp)
-{
-	std::stringstream oss;
-	oss << port;
-	oss >> this->_port;
+server::server(char* port, char* pwd): _port(port) {
+	std::stringstream ssMdp(pwd);
+	ssMdp >> this->_passWord;
 
 	std::cout << "Initialisation du Serveur IRC" << std::endl;
 	this->initServSocket(this->_port);
@@ -33,7 +31,7 @@ int	server::getFd() const
 	return this->_serverFd;
 }
 
-int	server::getPort() const
+char*	server::getPort() const
 {
 	return this->_port;
 }
@@ -41,7 +39,7 @@ int	server::getPort() const
 
 /*----------CREATION DU SOCKET DECOUTE-------------*/
 
-int	createServSocket(int port) {
+int	createServSocket(char* port) {
 	//on creer toutes les variables dont on aura besoin
 	int	status; 
 	int serverFd = -1;
@@ -65,7 +63,7 @@ int	createServSocket(int port) {
 	// 2. port ou nom de service 
 	// 3. structure d'addrinfo avc toutes les options quon veut
 	// 4. pointeur sur pointeur ou getaddrinfo() place la liste chaine 9chaque element a un sockaddr)
-	status = getaddrinfo(NULL, "6667", &hints, &res);
+	status = getaddrinfo(NULL, port, &hints, &res);
 	if (status != 0) {
 		fprintf(stderr, "Erreur de getaddrinfo(): %s\n", gai_strerror(status));		
 		exit(1);
@@ -139,7 +137,7 @@ int	createServSocket(int port) {
 	return serverFd;
 }
 
-void	server::initServSocket(int port)
+void	server::initServSocket(char* port)
 {
 	this->_serverFd = createServSocket(port);
 }
@@ -148,15 +146,24 @@ void	server::initServSocket(int port)
 
 /*----------PARSING-------------*/
 
-bool	checkPrefix(std::string prfx) {
+bool	extractPrefix(client* c) {
+	std::string	prfx = c->getMessage()->getPrefix();
 	if (prfx.empty())
 		return (true);
-	return (false);
+	std::size_t userIndex = prfx.find_first_of('!');
+	std::size_t hostIndex = prfx.find_first_of('@');
+	if (userIndex == prfx.npos && hostIndex == prfx.npos) {
+		//check if valid server name
+		// a-z A-Z 0-9 "-" (not consecutive) "." (not consecutive) no other special characters
+		// if (valid) -> c->getMessage()->setServ(substr)
+		// else its a nickname not followed by user or host
+	}
+	return (true);
 }
 
 bool	onlyDigits(std::string s) {
 	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
-		if (*it < '0' && *it > '9')
+		if (*it < '0' || *it > '9')
 			return (false);
 	}
 	return (true);
@@ -170,14 +177,16 @@ bool	onlyUpperCase(std::string s) {
 	return (true);
 }
 
-bool	checkCommand(std::string command) {
-	if ((onlyDigits(command) && command.size() != 3) || !onlyUpperCase(command))
+bool	extractCommand(client* c) {
+	std::string cmd = c->getMessage()->getCommand();
+	if ((onlyDigits(cmd) && cmd.size() != 3) || !onlyUpperCase(cmd))
 		return (false);
 	return (true);
 }
 
-bool	checkParams(std::vector<std::string> params) {
-	if (params.size() > 15)
+bool	extractParams(client* c) {
+	std::vector<std::string> prms = c->getMessage()->getParams();
+	if (prms.size() > 15)
 		return (false);
 	return (true);
 }
@@ -203,7 +212,7 @@ bool	parsing(client* c, char* rawMsg) {
 		c->getMessage()->setParams(prm);
 		prm.clear();
 	}
-	if (!checkPrefix(c->getMessage()->getPrefix()) || !checkCommand(c->getMessage()->getCommand()) || !checkParams(c->getMessage()->getParams()))
+	if (!extractPrefix(c) || !extractCommand(c) || !extractParams(c))
 		return (false); // il faut completer les fonctions check selon les criteres de RFC
 	return (true);
 }
@@ -219,47 +228,71 @@ void	server::run() {
 	this->_fds.push_back(pollingRequestServ);
 
 	while (true) {
-		int fd_ready = poll(&this->_fds[0], this->_fds.size(), 0);
-		if (fd_ready < 0) {
-			if (errno == EINTR) // ?
-				continue; //et gestion du ctrl+C
+		int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
+		if (fdReady == -1 && errno != EINTR) {
 			fprintf(stderr, "Erreur de poll(): %s\n", strerror(errno));
-			break;
+			// close all fds ?
+			// free qqc?
+			break; // exit() au lieu de break; ?
 		}
-		if (fd_ready > 0) {
+		if (fdReady > 0) {
 			for (int i = 0; i < this->_fds.size(); i++) {
 				if (this->_fds[i].revents & POLLIN) {
-					if (i == 0) {
+					if (i == 0) { // signal sur socket serv = nouvelle co client
 						struct sockaddr_storage	clientAddr;
 						socklen_t	addrLen = sizeof(clientAddr);
-						int clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
-						if (clientFd < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+						int clientFd;
+						do {
+							clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
+						} while (clientFd < 0 && errno == EINTR);
+						if (clientFd < 0) {
 							fprintf(stderr, "Erreur de accept(): %s\n", strerror(errno));
-							continue;
-						}
-
-						struct pollfd	pollingRequestClient;
-						pollingRequestClient.fd = clientFd;
-						pollingRequestClient.events = POLLIN;
-						this->_fds.push_back(pollingRequestClient);
-						std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
-
-						client	newClient(clientFd);
-						this->_clients.push_back(newClient);
-					}
-					else {
-						std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
-						char *buffer = NULL;
-						if (recv(this->_fds[i].fd, buffer, 512, 0) == -1) {
-							if (errno != EAGAIN) 
-								fprintf(stderr, "Erreur de recv(): %s\n", strerror(errno));
 						}
 						else {
-							if (parsing(&(this->_clients[i - 1]), buffer)) {
-								//send() bref faut voir
+							int flag = fcntl(clientFd, F_GETFL, 0);
+							if (flag < 0) {
+								fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
+								close(clientFd);
+								continue;
 							}
-						}	
-					}	
+							if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0) {
+								fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
+								close(clientFd);
+								continue; 
+							}
+
+							struct pollfd	pollingRequestClient;
+							pollingRequestClient.fd = clientFd;
+							pollingRequestClient.events = POLLIN;
+							this->_fds.push_back(pollingRequestClient);
+
+							client	newClient(clientFd);
+							this->_clients.push_back(&newClient);
+							newClient.setRegistered(true); // tout rajouter a la fin ?						
+
+							std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
+						}
+					}
+					else { // signal sur un socket client
+						std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
+						char *buffer = NULL;
+						int ret;
+						do {
+							ret = recv(this->_fds[i].fd, buffer, 512, 0);
+						} while (ret == -1 && errno == EINTR);
+						switch (ret) {
+							case (0): // deconnexion client
+								close(this->_clients[i - 1]->getFd());
+								//pop this->_fds[i] et pop this->_clients[i - 1]
+							case (-1):
+								fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
+								close(this->_clients[i - 1]->getFd());
+							default:
+								if (parsing(this->_clients[i - 1], buffer)) {
+									//send() bref faut voir
+								}
+						}
+					}
 				}
 			}
 		}
