@@ -26,7 +26,7 @@ class server
 {
 	private:
 		std::vector<struct pollfd>		_fds;
-		std::vector<client *>			_clients;
+		std::vector<client>			_clients;
 		std::map<std::string, channel>	_channels;
 		std::string						_passWord;
 		int								_serverFd;

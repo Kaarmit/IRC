@@ -41,12 +41,12 @@ char*	server::getPort() const
 
 int	createServSocket(char* port) {
 	//on creer toutes les variables dont on aura besoin
-	int	status; 
+	int	status;
 	int serverFd = -1;
 	int reuse = 1;
 	int v6only_off = 0;
 	struct addrinfo	hints, *res = NULL;
-	
+
 	//on init la structure d'addresse
 	//en initialisant a 0 avec memset
 	//on donne la famille des deux type d'ip(4 et 6)
@@ -60,12 +60,12 @@ int	createServSocket(char* port) {
 
 	// donne une liste chainee d'addr IP qui respecte les options ci-dessus
 	// 1. node = addr IP literal ou nom dhote a resoudre; NULL pour serv
-	// 2. port ou nom de service 
+	// 2. port ou nom de service
 	// 3. structure d'addrinfo avc toutes les options quon veut
 	// 4. pointeur sur pointeur ou getaddrinfo() place la liste chaine 9chaque element a un sockaddr)
 	status = getaddrinfo(NULL, port, &hints, &res);
 	if (status != 0) {
-		fprintf(stderr, "Erreur de getaddrinfo(): %s\n", gai_strerror(status));		
+		fprintf(stderr, "Erreur de getaddrinfo(): %s\n", gai_strerror(status));
 		exit(1);
 	}
 
@@ -88,7 +88,7 @@ int	createServSocket(char* port) {
 		fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
 		freeaddrinfo(res);
 		close(serverFd);
-		exit(1); 
+		exit(1);
 	}
 	//on configure des options sur le socket serverFd
 	//le niveau de l'option est SOL_SOCKET, niveau general du socket, TCP/IP ici
@@ -227,6 +227,8 @@ void	server::run() {
 	pollingRequestServ.events = POLLIN;
 	this->_fds.push_back(pollingRequestServ);
 
+	std::vector<int>	toRemove;//pour supp les clients
+
 	while (true) {
 		int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
 		if (fdReady == -1 && errno != EINTR) {
@@ -258,7 +260,7 @@ void	server::run() {
 							if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0) {
 								fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
 								close(clientFd);
-								continue; 
+								continue;
 							}
 
 							struct pollfd	pollingRequestClient;
@@ -267,33 +269,47 @@ void	server::run() {
 							this->_fds.push_back(pollingRequestClient);
 
 							client	newClient(clientFd);
-							this->_clients.push_back(&newClient);
-							newClient.setRegistered(true); // tout rajouter a la fin ?						
-
+							this->_clients.push_back(newClient);
 							std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
 						}
 					}
 					else { // signal sur un socket client
 						std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
-						char *buffer = NULL;
+						char buffer[513];
 						int ret;
 						do {
-							ret = recv(this->_fds[i].fd, buffer, 512, 0);
+							ret = recv(this->_fds[i].fd, buffer, sizeof(buffer) - 1, 0);
 						} while (ret == -1 && errno == EINTR);
 						switch (ret) {
 							case (0): // deconnexion client
-								close(this->_clients[i - 1]->getFd());
-								//pop this->_fds[i] et pop this->_clients[i - 1]
-							case (-1):
-								fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
-								close(this->_clients[i - 1]->getFd());
-							default:
-								if (parsing(this->_clients[i - 1], buffer)) {
+								std::cout << "Client deconnecte fd=" << this->_fds[i].fd << std::endl;
+								toRemove.push_back(i);
+								break;
+							case (-1)://erreur
+								std::cerr << "Erreur recv() : " << strerror(errno) << std::endl;
+								toRemove.push_back(i);
+								break;
+							default://message
+								buffer[ret] = '\0';
+								if (parsing(&this->_clients[i - 1], buffer)) {
 									//send() bref faut voir
 								}
+								break;
 						}
 					}
 				}
+			}
+			//on remove les clients ici en mettant a jour les vector _fds et _clients
+			if (!toRemove.empty())
+			{
+				for (std::vector<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it)
+				{
+					int idx = *it;
+					close(this->_fds[idx].fd);
+					this->_fds.erase(this->_fds.begin() + idx);
+					this->_clients.erase(this->_clients.begin() + (idx - 1));
+				}
+				toRemove.clear();
 			}
 		}
 	}
