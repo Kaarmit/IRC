@@ -146,24 +146,59 @@ void	server::initServSocket(char* port)
 
 /*----------PARSING-------------*/
 
-bool	extractPrefix(client* c) {
-	std::string	prfx = c->getMessage()->getPrefix();
+// DNS hostname rules: a-z A-Z 0-9 "-" (not consecutive, dont start/end with it) "." (not consecutive) no other special characters
+bool	checkServName(std::string name) {
+	
+	for (std::string::iterator it = name.begin(); it != name.end(); it++) {
+		if (!std::isdigit(*it) && !std::isupper(*it) && !std::islower(*it) && *it != '.' && *it != '-')
+			return (false);
+	}
+	if (std::count(name.begin(), name.end(), "-") != 1 || std::count(name.begin(), name.end(), ".") != 1)
+		return (false);
+	return (true);
+}
+
+void	setIdentity(client* c) {
+	std::string	prfx = c->getMessage().getPrefix();
 	if (prfx.empty())
-		return (true);
+		return ;
 	std::size_t userIndex = prfx.find_first_of('!');
 	std::size_t hostIndex = prfx.find_first_of('@');
+
 	if (userIndex == prfx.npos && hostIndex == prfx.npos) {
-		//check if valid server name
-		// a-z A-Z 0-9 "-" (not consecutive) "." (not consecutive) no other special characters
-		// if (valid) -> c->getMessage()->setServ(substr)
-		// else its a nickname not followed by user or host
+		if (checkServName(prfx)) 
+			c->setServerName(prfx);
+		else
+			c->setNick(prfx);
+		return ; // :server.name or :nick
 	}
-	return (true);
+	if (userIndex != prfx.npos) {
+		c->setNick(prfx.substr(0, userIndex));
+		if (hostIndex == prfx.npos)
+			c->setUser(prfx.substr(userIndex + 1));	
+		else {
+			c->setUser(prfx.substr(userIndex + 1, hostIndex));
+			c->setHost(prfx.substr(hostIndex + 1));
+		}
+		return ; // :nick!user or :nick!user@host
+	}
+	if (hostIndex != prfx.npos) {
+		c->setNick(prfx.substr(0, hostIndex));
+		c->setHost(prfx.substr(hostIndex + 1));
+		return ; // :nick@host
+	}
+}
+
+bool	checkIdentity(client* c) {
+//compare servName if any
+//compare nick if any
+//compare user if any
+//compare host if any
 }
 
 bool	onlyDigits(std::string s) {
 	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
-		if (*it < '0' || *it > '9')
+		if (!std::isdigit(*it))
 			return (false);
 	}
 	return (true);
@@ -171,21 +206,21 @@ bool	onlyDigits(std::string s) {
 
 bool	onlyUpperCase(std::string s) {
 	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
-		if (*it < 'A' && *it > 'Z')
+		if (!std::isupper(*it))
 			return (false);
 	}
 	return (true);
 }
 
-bool	extractCommand(client* c) {
-	std::string cmd = c->getMessage()->getCommand();
+bool	checkCommand(client* c) {
+	std::string cmd = c->getMessage().getCommand();
 	if ((onlyDigits(cmd) && cmd.size() != 3) || !onlyUpperCase(cmd))
 		return (false);
 	return (true);
 }
 
-bool	extractParams(client* c) {
-	std::vector<std::string> prms = c->getMessage()->getParams();
+bool	checkParams(client* c) {
+	std::vector<std::string> prms = c->getMessage().getParams();
 	if (prms.size() > 15)
 		return (false);
 	return (true);
@@ -198,22 +233,31 @@ bool	parsing(client* c, char* rawMsg) {
 	std::string					cmd;
 	std::string					prm;
 
-	c->getMessage()->clearMessage();
+	c->getMessage().clearMessage();
 	size_t len = rawMsgStr.size();
 	if (rawMsgStr.find_last_of('\r') != (len-2) && rawMsgStr.find_last_of('\n') != (len-1))
 		return (false);
 	if (rawMsgStr.front() == ':') {
 		ss >> prfx;
-		c->getMessage()->setPrefix(prfx);
+		c->getMessage().setPrefix(prfx);
+		if (!c->getRegistered()) {
+			setIdentity(c);
+			if (!c->getNick().empty() && !c->getUser().empty())
+				c->setRegistered(true);
+		}
+		else {
+			if (!checkIdentity(c))
+				return (false);
+		}
 	}
 	ss >> cmd;
-	c->getMessage()->setCommand(cmd);
+	c->getMessage().setCommand(cmd);
 	while(ss >> prm) {
-		c->getMessage()->setParams(prm);
+		c->getMessage().setParams(prm);
 		prm.clear();
 	}
-	if (!extractPrefix(c) || !extractCommand(c) || !extractParams(c))
-		return (false); // il faut completer les fonctions check selon les criteres de RFC
+	if (!checkCommand(c) || !checkParams(c))
+		return (false);
 	return (true);
 }
 
@@ -267,8 +311,8 @@ void	server::run() {
 							this->_fds.push_back(pollingRequestClient);
 
 							client	newClient(clientFd);
-							this->_clients.push_back(&newClient);
-							newClient.setRegistered(true); // tout rajouter a la fin ?						
+							this->_clients.push_back(newClient);
+							 // tout rajouter a la fin ?						
 
 							std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
 						}
@@ -282,13 +326,13 @@ void	server::run() {
 						} while (ret == -1 && errno == EINTR);
 						switch (ret) {
 							case (0): // deconnexion client
-								close(this->_clients[i - 1]->getFd());
+								close(this->_clients[i - 1].getFd());
 								//pop this->_fds[i] et pop this->_clients[i - 1]
 							case (-1):
-								fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
-								close(this->_clients[i - 1]->getFd());
+								fprintf(stderr, "Erreur de recv(): %s\n", strerror(errno));
+								//belek envoyer l'erreur au client
 							default:
-								if (parsing(this->_clients[i - 1], buffer)) {
+								if (parsing(&this->_clients[i - 1], buffer)) {
 									//send() bref faut voir
 								}
 						}
