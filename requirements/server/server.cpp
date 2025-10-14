@@ -7,6 +7,7 @@ server::server(char* port, char* pwd): _port(port) {
 	ssMdp >> this->_passWord;
 
 	std::cout << "Initialisation du Serveur IRC" << std::endl;
+	this->initCmdServer();
 	this->initServSocket(this->_port);
 	std::cout << "Server pret." << std::endl;
 	this->run();
@@ -36,6 +37,51 @@ char*	server::getPort() const
 	return this->_port;
 }
 /*-------------------------*/
+
+
+/*--------------------CMD DU SERVER----------------*/
+
+//PASS
+
+//NICK
+void	server::handleNick(client* cli)
+{
+	cli->setNick(cli->getMessage()->getParams()[0]);
+}
+
+//USER
+
+//JOIN
+
+//PART
+
+//PRIVMSG
+
+//KICK
+
+//INVITE
+
+//TOPIC
+
+//MODE
+
+//PING (optionnel)
+
+//QUIT
+
+//WHO(optionnel)
+
+void	server::initCmdServer()
+{
+	this->_cmdList["NICK"] = &server::handleNick;
+}
+
+void	server::execute(int idx)
+{
+	std::string cmd = this->_clients[idx].getMessage()->getCommand();
+	this->_cmdList[cmd](this->_clients[idx]);
+}
+/*-------------------------------------------------*/
 
 /*----------CREATION DU SOCKET DECOUTE-------------*/
 
@@ -292,7 +338,8 @@ void	server::run() {
 							default://message
 								buffer[ret] = '\0';
 								if (parsing(&this->_clients[i - 1], buffer)) {
-									//send() bref faut voir
+										execute(i - 1);//faire cmme claude un peu
+
 								}
 								break;
 						}
@@ -315,4 +362,3 @@ void	server::run() {
 	}
 }
 /*---------------------------------------*/
-
