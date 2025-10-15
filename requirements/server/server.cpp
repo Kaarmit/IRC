@@ -44,9 +44,9 @@ char*	server::getPort() const
 //PASS
 
 //NICK
-void	server::handleNick(client* cli)
+void	server::handleNick(client* cli, message msg)
 {
-	cli->setNick(cli->getMessage()->getParams()[0]);
+	cli->setNick(msg.getParams()[0]);
 }
 
 //USER
@@ -76,11 +76,6 @@ void	server::initCmdServer()
 	this->_cmdList["NICK"] = &server::handleNick;
 }
 
-void	server::execute(int idx)
-{
-	std::string cmd = this->_clients[idx].getMessage()->getCommand();
-	this->_cmdList[cmd](this->_clients[idx]);
-}
 /*-------------------------------------------------*/
 
 /*----------CREATION DU SOCKET DECOUTE-------------*/
@@ -194,7 +189,7 @@ void	server::initServSocket(char* port)
 
 // DNS hostname rules: a-z A-Z 0-9 "-" (not consecutive, dont start/end with it) "." (not consecutive) no other special characters
 bool	checkServName(std::string name) {
-	
+
 	for (std::string::iterator it = name.begin(); it != name.end(); it++) {
 		if (!std::isdigit(*it) && !std::isupper(*it) && !std::islower(*it) && *it != '.' && *it != '-')
 			return (false);
@@ -212,7 +207,7 @@ void	setIdentity(client* c) {
 	std::size_t hostIndex = prfx.find_first_of('@');
 
 	if (userIndex == prfx.npos && hostIndex == prfx.npos) {
-		if (checkServName(prfx)) 
+		if (checkServName(prfx))
 			c->setServerName(prfx);
 		else
 			c->setNick(prfx);
@@ -221,7 +216,7 @@ void	setIdentity(client* c) {
 	if (userIndex != prfx.npos) {
 		c->setNick(prfx.substr(0, userIndex));
 		if (hostIndex == prfx.npos)
-			c->setUser(prfx.substr(userIndex + 1));	
+			c->setUser(prfx.substr(userIndex + 1));
 		else {
 			c->setUser(prfx.substr(userIndex + 1, hostIndex));
 			c->setHost(prfx.substr(hostIndex + 1));
@@ -360,7 +355,7 @@ void	server::run() {
 
 							client	newClient(clientFd);
 							this->_clients.push_back(newClient);
-							 // tout rajouter a la fin ?						
+							 // tout rajouter a la fin ?
 
 							std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
 						}
@@ -383,9 +378,23 @@ void	server::run() {
 								break;
 							default://message
 								buffer[ret] = '\0';
-								if (parsing(&this->_clients[i - 1], buffer)) {
-										execute(i - 1);//faire cmme claude un peu
-
+								if (parsing(&this->_clients[i - 1], buffer))
+								{
+									//on recup le message parser
+									message	msg = this->_clients[i - 1].getMessage();
+									std::string	cmdName = msg.getCommand();
+									//on verif si la cmd existe
+									if (this->_cmdList.find(cmdName) != this->_cmdList.end())
+									{
+										//on execute
+										(this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+									}
+									else
+									{
+										std::cerr << "Commande inconnue: " << cmdName << std::endl;
+										//envoie de l'erreur au client aussi
+									}
+									msg.clearMessage();
 								}
 								break;
 						}
