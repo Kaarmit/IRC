@@ -206,62 +206,68 @@ bool	checkServName(std::string name) {
 
 void	setIdentity(client* c) {
 	std::string	prfx = c->getMessage().getPrefix();
-	if (prfx.empty())
-		return ;
-	std::size_t userIndex = prfx.find_first_of('!');
-	std::size_t hostIndex = prfx.find_first_of('@');
-
-	if (userIndex == prfx.npos && hostIndex == prfx.npos) {
-		if (checkServName(prfx)) 
-			c->setServerName(prfx);
-		else
-			c->setNick(prfx);
-		return ; // :server.name or :nick
-	}
-	if (userIndex != prfx.npos) {
-		c->setNick(prfx.substr(0, userIndex));
-		if (hostIndex == prfx.npos)
-			c->setUser(prfx.substr(userIndex + 1));	
-		else {
-			c->setUser(prfx.substr(userIndex + 1, hostIndex));
+	if (!prfx.empty()) {
+		std::size_t userIndex = prfx.find_first_of('!');
+		std::size_t hostIndex = prfx.find_first_of('@');
+		
+		if (userIndex == prfx.npos && hostIndex == prfx.npos) { // :server.name or :nick
+			if (checkServName(prfx))
+				c->setServerName(prfx);
+			else
+				c->setNick(prfx);
+		}
+		else if (userIndex != prfx.npos) { // :nick!user or :nick!user@host
+			c->setNick(prfx.substr(0, userIndex));
+				if (hostIndex == prfx.npos)
+					c->setUser(prfx.substr(userIndex + 1));	
+				else {
+					c->setUser(prfx.substr(userIndex + 1, hostIndex));
+					c->setHost(prfx.substr(hostIndex + 1));
+				}
+		}
+		else { // (hostIndex != prfx.npos) // :nick@host
+			c->setNick(prfx.substr(0, hostIndex));
 			c->setHost(prfx.substr(hostIndex + 1));
 		}
-		return ; // :nick!user or :nick!user@host
 	}
-	if (hostIndex != prfx.npos) {
-		c->setNick(prfx.substr(0, hostIndex));
-		c->setHost(prfx.substr(hostIndex + 1));
-		return ; // :nick@host
-	}
+	return ;
 }
 
-bool	checkIdentity(client* c) {
-//compare servName if any
-//compare nick if any
-//compare user if any
-//compare host if any
-}
-
-bool	onlyDigits(std::string s) {
-	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
-		if (!std::isdigit(*it))
-			return (false);
-	}
-	return (true);
-}
-
-bool	onlyUpperCase(std::string s) {
-	for (std::string::iterator it = s.begin(); it != s.end(); it++) {
-		if (!std::isupper(*it))
-			return (false);
+bool	checkIdentity(client* c, std::string prefix) {
+	std::string	prfx = c->getMessage().getPrefix();
+	if (!prfx.empty()) {
+		std::size_t userIndex = prfx.find_first_of('!');
+		std::size_t hostIndex = prfx.find_first_of('@');
+		if (userIndex == prfx.npos && hostIndex == prfx.npos) {
+			if (prfx.compare(c->getServerName()) != 0 && prfx.compare(c->getNick()) != 0)
+				return (false);
+		}
+		else if (userIndex != prfx.npos) {
+			if (c->getNick().compare(prfx.substr(0, userIndex)) != 0)
+				return (false);
+			if (hostIndex == prfx.npos) {
+				if (c->getUser().compare(prfx.substr(userIndex + 1)) != 0)	
+					return (false);
+			}
+			else {
+				if (c->getUser().compare(prfx.substr(userIndex + 1, hostIndex)) != 0 || c->getHost().compare(prfx.substr(hostIndex + 1)))
+					return (false);
+			}
+		}
+		else { //if (hostIndex != prfx.npos)
+			if (c->getNick().compare(prfx.substr(0, hostIndex)) != 0 || c->getHost().compare(prfx.substr(hostIndex + 1)) != 0)
+				return (false);
+		}
 	}
 	return (true);
 }
 
 bool	checkCommand(client* c) {
-	std::string cmd = c->getMessage().getCommand();
-	if ((onlyDigits(cmd) && cmd.size() != 3) || !onlyUpperCase(cmd))
-		return (false);
+	std::string cmd = c->getMessage().getCommand();	
+	for (std::string::iterator it = cmd.begin(); it != cmd.end(); it++) {
+		if (!std::isupper(*it))
+			return (false);
+	}
 	return (true);
 }
 
@@ -292,7 +298,7 @@ bool	parsing(client* c, char* rawMsg) {
 				c->setRegistered(true);
 		}
 		else {
-			if (!checkIdentity(c))
+			if (!checkIdentity(c, prfx))
 				return (false);
 		}
 	}
@@ -360,7 +366,7 @@ void	server::run() {
 
 							client	newClient(clientFd);
 							this->_clients.push_back(newClient);
-							 // tout rajouter a la fin ?						
+							 // tout rajouter a la fin ?
 
 							std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
 						}
@@ -384,7 +390,7 @@ void	server::run() {
 							default://message
 								buffer[ret] = '\0';
 								if (parsing(&this->_clients[i - 1], buffer)) {
-										execute(i - 1);//faire cmme claude un peu
+									execute(i - 1);//faire cmme claude un peu
 
 								}
 								break;
