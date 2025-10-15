@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   client.hpp                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/10/07 14:05:18 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/14 17:45:08 by aistierl         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
@@ -30,7 +18,7 @@ class client
 		std::string   				_user;
 		std::string   				_real;
 		std::vector<std::string> 	_channels;
-		
+
 		client();
 
 	public :
