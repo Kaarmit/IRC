@@ -336,104 +336,101 @@ void server::run() {
             // free qqc?
             break; // exit() au lieu de break; ?
         }
-        if (fdReady > 0) 
+        if (fdReady <= 0)
+			continue;
+        for (int i = 0; i < this->_fds.size(); i++) 
 		{
-            for (int i = 0; i < this->_fds.size(); i++) 
+            if (this->_fds[i].revents & POLLIN) 
 			{
-                if (this->_fds[i].revents & POLLIN) 
-				{
-                    if (i == 0) 
-					{ // signal
-						while (true)
-						{// sur socket serv = nouvelle connexion client
-                        	struct sockaddr_storage clientAddr;
-                        	socklen_t addrLen = sizeof(clientAddr);
-                        	int clientFd;
-                       		do {
-                            	clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
-                        	} while (clientFd < 0 && errno == EINTR);
-						
-                        	if (clientFd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-							{
-								fprintf(stderr, "Erreur de accept(): %s\n", strerror(errno));
-								break;
-							}
-                            // Ajouter à la liste des clients à ajouter
-                            toAdd.push_back(clientFd);
-                            std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
-                        }
-                    }
-                    else 
-					{ // signal sur un socket client
-                        std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
-                        char buffer[513];
-                        int ret;
-                        do 
-						{
-                            ret = recv(this->_fds[i].fd, buffer, sizeof(buffer) - 1, 0);
-                        } while (ret == -1 && errno == EINTR);
-                        switch (ret) 
-						{
-                            case (0): // déconnexion client
-                                std::cout << "Client déconnecté fd=" << this->_fds[i].fd << std::endl;
-                                toRemove.push_back(i);
-                                break;
-                            case (-1): // erreur
-                                std::cerr << "Erreur recv() : " << strerror(errno) << std::endl;
-                                toRemove.push_back(i);
-                                break;
-                            default: // message
-                                buffer[ret] = '\0';
-                                if (parsing(&this->_clients[i - 1], buffer)) 
-                                    execute(i - 1); // faire comme Claude un peu
-                                break;
-                        }
-                    }
-                }
-            }
-
-            // Ajouter les nouveaux clients dans _fds et _clients
-            if (!toAdd.empty())
-			{
-                for (std::vector<int>::reverse_iterator it = toAdd.rbegin(); it != toAdd.rend(); ++it) 
-				{
-                    int clientFd = *it;
-					int flag = fcntl(clientFd, F_GETFL, 0);
-                    if (flag < 0) 
+                if (i == 0) // signal sur socket serv = nouvelle(s) connexion(s) client
+				{ 
+					while (true) // en 'rafale'
 					{
-                    	fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
-                    	close(clientFd);
-                    	continue;
+                    	struct sockaddr_storage clientAddr;
+                    	socklen_t addrLen = sizeof(clientAddr);
+						int clientFd;
+						do {
+							clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
+						} while (clientFd < 0 && errno == EINTR);
+						if (clientFd < 0)
+						{
+							if (errno == EAGAIN || errno == EWOULDBLOCK)
+								break; //no more client try to connect
+							fprintf(stderr, "No more clients wants to connect: %s\n", strerror(errno)); //other err
+							continue;
+						}
+						int flag = fcntl(clientFd, F_GETFL, 0);
+                		if (flag < 0) 
+						{
+                			fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
+                			close(clientFd);
+                			continue;
+                		}
+                		if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0) 
+						{
+                			fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
+                			close(clientFd);
+                			continue;
+						}
+                        toAdd.push_back(clientFd);
+                        std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
                     }
-                    if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0) 
+                }
+                else 
+				{ // signal sur un socket client
+                    std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
+                    char buffer[513];
+                    int ret;
+                    do 
 					{
-                    	fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
-                    	close(clientFd);
-                    	continue;
-					}
-                    struct pollfd pollingRequestClient;
-                    pollingRequestClient.fd = clientFd;
-                    pollingRequestClient.events = POLLIN;
-                    this->_fds.push_back(pollingRequestClient);
-
-                    client newClient(clientFd);
-                    this->_clients.push_back(newClient);
+                        ret = recv(this->_fds[i].fd, buffer, sizeof(buffer) - 1, 0);
+                    } while (ret == -1 && errno == EINTR);
+                    switch (ret) 
+					{
+                        case (0): // déconnexion client
+                            std::cout << "Client déconnecté fd=" << this->_fds[i].fd << std::endl;
+                            toRemove.push_back(i);
+                            break;
+                        case (-1): // erreur recv
+                            std::cerr << "Erreur recv() : " << strerror(errno) << std::endl;
+                            toRemove.push_back(i); // t sur ? 
+                            break;
+                        default: // message
+                            buffer[ret] = '\0';
+                            if (parsing(&this->_clients[i - 1], buffer)) 
+                                execute(i - 1); // faire comme Claude un peu
+                            break;
+                    }
                 }
-                toAdd.clear();
-            }
-
-            // Supprimer les clients
-            if (!toRemove.empty()) {
-                for (std::vector<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it) 
-				{
-                    int idx = *it;
-                    close(this->_fds[idx].fd);
-                    this->_fds.erase(this->_fds.begin() + idx);
-                    this->_clients.erase(this->_clients.begin() + (idx - 1));
-                }
-                toRemove.clear();
             }
         }
+        // Ajouter les nouveaux clients dans _fds et _clients
+        if (!toAdd.empty())
+		{
+            for (std::vector<int>::iterator it = toAdd.begin(); it != toAdd.end(); ++it) 
+			{
+                int clientFd = *it;
+                struct pollfd pollingRequestClient;
+                pollingRequestClient.fd = clientFd;
+                pollingRequestClient.events = POLLIN;
+                this->_fds.push_back(pollingRequestClient);
+                client newClient(clientFd);
+                this->_clients.push_back(newClient);
+            }
+            toAdd.clear();
+        }
+        // Supprimer les clients
+        if (!toRemove.empty()) {
+            for (std::vector<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it) 
+			{
+                int idx = *it;
+                close(this->_fds[idx].fd);
+                this->_fds.erase(this->_fds.begin() + idx);
+                this->_clients.erase(this->_clients.begin() + (idx - 1));
+            }
+            toRemove.clear();
+        }
+        
     }
 }
 /*---------------------------------------*/
