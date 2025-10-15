@@ -11,7 +11,7 @@ class client
 
 		int 						_fd;
 		bool 						_registered;
-		message*					_msg;
+		message						_msg;
 		std::string					_serverName;
 		std::string					_host;
 		std::string					_nick;
@@ -29,7 +29,7 @@ class client
 		int							getFd(void) const;
 		bool						getRegistered(void) const;
 		void						setRegistered(bool status);
-		message*					getMessage(void) const;
+		message						getMessage(void) const;
 		std::string					getServerName(void) const;
 		void						setServerName(std::string name);
 		std::string					getHost(void) const;
@@ -40,8 +40,7 @@ class client
 		void						setUser(std::string name);
 		std::string					getReal(void) const;
 		void						setReal(std::string name);
-		std::string					getChannel(void) const;
-		void						setChannel(std::string name);
+		std::vector<std::string>	getChannel(void) const;	
 
 };
 
