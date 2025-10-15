@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/07 14:05:18 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/13 17:12:23 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/10/14 17:45:08 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ class client
 
 		int 						_fd;
 		bool 						_registered;
-		message*					_msg;
+		message						_msg;
 		std::string					_serverName;
 		std::string					_host;
 		std::string					_nick;
@@ -41,7 +41,7 @@ class client
 		int							getFd(void) const;
 		bool						getRegistered(void) const;
 		void						setRegistered(bool status);
-		message*					getMessage(void) const;
+		message						getMessage(void) const;
 		std::string					getServerName(void) const;
 		void						setServerName(std::string name);
 		std::string					getHost(void) const;
@@ -52,8 +52,7 @@ class client
 		void						setUser(std::string name);
 		std::string					getReal(void) const;
 		void						setReal(std::string name);
-		std::string					getChannel(void) const;
-		void						setChannel(std::string name);	
+		std::vector<std::string>	getChannel(void) const;	
 
 };
 
