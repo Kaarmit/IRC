@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <poll.h>
+#include <csignal>
+#include <time.h>
 
 class server
 {

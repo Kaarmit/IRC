@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <time.h>
 #include "../message/message.hpp"
 
 class client
@@ -11,12 +12,15 @@ class client
 
 		int 						_fd;
 		bool 						_registered;
+		time_t						_connexionTime;
 		message						_msg;
 		std::string					_serverName;
 		std::string					_host;
 		std::string					_nick;
 		std::string   				_user;
 		std::string   				_real;
+		std::string					_outbuf;
+		size_t						_bytesSent;
 		std::vector<std::string> 	_channels;
 
 		client();
@@ -49,8 +53,7 @@ class client
 		std::string& 				getOutbuf();
     	size_t& 					getBytesSent();
 		void 						setBytesSent(size_t value);
-};
-
+		double						getTime() const;
 };
 
 #endif
