@@ -310,18 +310,17 @@ bool	checkParams(client* c) {
 	return (true);
 }
 
-bool	parsing(client* c, char* rawMsg) {
+bool	parsing(client* c, std::string rawMsg) {
 	std::istringstream		ss(rawMsg);
-	std::string	rawMsgStr = ss.str();
-	std::string					prfx;
-	std::string					cmd;
-	std::string					prm;
+	std::string				prfx;
+	std::string				cmd;
+	std::string				prm;
 
 	c->getMessage().clearMessage();
-	size_t len = rawMsgStr.size();
-	if (rawMsgStr.find_last_of('\r') != (len-2) && rawMsgStr.find_last_of('\n') != (len-1))
+	size_t len = rawMsg.size();
+	if (len > 512 || (rawMsg.find("\r\n") != (len-2)))
 		return (false);
-	if (rawMsgStr.front() == ':') {
+	if (rawMsg.front() == ':') {
 		ss >> prfx;
 		c->getMessage().setPrefix(prfx);
 		if (!c->getRegistered()) {
@@ -431,36 +430,41 @@ void server::run()
                             break;
                         default: // message
                             buffer[ret] = '\0';
-                            if (parsing(&this->_clients[i - 1], buffer))
-							{
-								//on recup le message parser
-								message	msg = this->_clients[i - 1].getMessage();
-								std::string	cmdName = msg.getCommand();
-								//on verif si la cmd existe
-								if (this->_cmdList.find(cmdName) != this->_cmdList.end())
+							std::string fragment(buffer);
+							if (!fragment.find("\r\n"))
+								this->_clients[i - 1].getFullMessage().append(" " + fragment);
+                            else {
+								if (parsing(&this->_clients[i - 1], this->_clients[i - 1].getFullMessage()))
 								{
-									//on verifie si le client est registered
-									if (!this->_clients[i - 1].getRegistered())
+									//on recup le message parser
+									message	msg = this->_clients[i - 1].getMessage();
+									std::string	cmdName = msg.getCommand();
+									//on verif si la cmd existe
+									if (this->_cmdList.find(cmdName) != this->_cmdList.end())
 									{
-										if (!this->_clients[i - 1].getUser().empty() && !this->_clients[i - 1].getNick().empty())
-											this->_clients[i - 1].setRegistered(true);
-										else
+										//on verifie si le client est registered
+										if (!this->_clients[i - 1].getRegistered())
 										{
-											if (this->_clients[i - 1].getTime() < 1min)
-												toRemove.push_back(i);
+											if (!this->_clients[i - 1].getUser().empty() && !this->_clients[i - 1].getNick().empty())
+												this->_clients[i - 1].setRegistered(true);
 											else
-												//mettre le client en pollout pour lui emvoyer un message specifique
+											{
+												if (this->_clients[i - 1].getTime() < 1min)
+													toRemove.push_back(i);
+												else
+													//mettre le client en pollout pour lui emvoyer un message specifique
+											}
 										}
+										//on execute la cmd
+										(this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
 									}
-									//on execute la cmd
-									(this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+									else
+									{
+										std::cerr << "Commande inconnue: " << cmdName << std::endl;
+										//envoie de l'erreur au client aussi
+									}
+									msg.clearMessage();
 								}
-								else
-								{
-									std::cerr << "Commande inconnue: " << cmdName << std::endl;
-									//envoie de l'erreur au client aussi
-								}
-								msg.clearMessage();
 							}
 							break;
                     }
