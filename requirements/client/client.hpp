@@ -29,7 +29,7 @@ class client
 		int							getFd(void) const;
 		bool						getRegistered(void) const;
 		void						setRegistered(bool status);
-		message						getMessage(void) const;
+		message&					getMessage(void);//modif de Daryl: retourne un ref pour avoir levrai message et pas une cpy
 		std::string					getServerName(void) const;
 		void						setServerName(std::string name);
 		std::string					getHost(void) const;
@@ -40,7 +40,7 @@ class client
 		void						setUser(std::string name);
 		std::string					getReal(void) const;
 		void						setReal(std::string name);
-		std::vector<std::string>	getChannel(void) const;	
+		std::vector<std::string>	getChannel(void) const;
 
 };
 

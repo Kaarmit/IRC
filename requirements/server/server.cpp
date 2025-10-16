@@ -44,32 +44,55 @@ char*	server::getPort() const
 //PASS
 
 //NICK
-void	server::handleNick(client* cli, message msg)
+void	server::handleNick(client* cli, message& msg)
 {
 	cli->setNick(msg.getParams()[0]);
 }
 
 //USER
-
+void	server::handleUser(client* cli, message& msg)
+{
+}
 //JOIN
-
+void	server::handleJoin(client* cli, message& msg)
+{
+}
 //PART
-
+void	server::handlePart(client* cli, message& msg)
+{
+}
 //PRIVMSG
-
+void	server::handlePrivmsg(client* cli, message& msg)
+{
+}
 //KICK
-
+void	server::handleKick(client* cli, message& msg)
+{
+}
 //INVITE
-
+void	server::handleInvite(client* cli, message& msg)
+{
+}
 //TOPIC
-
+void	server::handleTopic(client* cli, message& msg)
+{
+}
 //MODE
-
+void	server::handleMode(client* cli, message& msg)
+{
+}
 //PING (optionnel)
-
+void	server::handlePing(client* cli, message& msg)
+{
+}
 //QUIT
-
+void	server::handleQuit(client* cli, message& msg)
+{
+}
 //WHO(optionnel)
+void	server::handleWho(client* cli, message& msg)
+{
+}
 
 void	server::initCmdServer()
 {
@@ -392,10 +415,11 @@ void server::run() {
                             break;
                         default: // message
                             buffer[ret] = '\0';
+							//recupere le buffer client et met ce que renvoie recv dedans
                             if (parsing(&this->_clients[i - 1], buffer))
 							{
 								//on recup le message parser
-								message	msg = this->_clients[i - 1].getMessage();
+								message&	msg = this->_clients[i - 1].getMessage();
 								std::string	cmdName = msg.getCommand();
 								//on verif si la cmd existe
 								if (this->_cmdList.find(cmdName) != this->_cmdList.end())
@@ -409,7 +433,7 @@ void server::run() {
 									//envoie de l'erreur au client aussi
 								}
 								msg.clearMessage();
-								}
+							}
 							break;
                     }
                 }
