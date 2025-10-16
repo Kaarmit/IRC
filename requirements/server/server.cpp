@@ -347,18 +347,17 @@ bool	checkParams(client* c) {
 	return (true);
 }
 
-bool	parsing(client* c, char* rawMsg) {
+bool	parsing(client* c, std::string rawMsg) {
 	std::istringstream		ss(rawMsg);
-	std::string	rawMsgStr = ss.str();
-	std::string					prfx;
-	std::string					cmd;
-	std::string					prm;
+	std::string				prfx;
+	std::string				cmd;
+	std::string				prm;
 
 	c->getMessage().clearMessage();
-	size_t len = rawMsgStr.size();
-	if (rawMsgStr.find_last_of('\r') != (len-2) && rawMsgStr.find_last_of('\n') != (len-1))
+	size_t len = rawMsg.size();
+	if (len > 512 || (rawMsg.find("\r\n") != (len-2)))
 		return (false);
-	if (rawMsgStr.front() == ':') {
+	if (rawMsg.front() == ':') {
 		ss >> prfx;
 		c->getMessage().setPrefix(prfx);
 		if (!c->getRegistered()) {
@@ -402,7 +401,7 @@ void server::run()
         int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
         if (fdReady == -1 && errno != EINTR)
 		{
-            fprintf(stderr, "Erreur de poll(): %s\n", strerror(errno));
+			std::cerr << "Erreur poll():" << strerror(errno) << std::endl;
             // close all fds ?
             // free qqc?
             break; // exit() au lieu de break; ?
@@ -427,19 +426,19 @@ void server::run()
 						{
 							if (errno == EAGAIN || errno == EWOULDBLOCK)
 								break; //no more client try to connect
-							fprintf(stderr, "No more clients wants to connect: %s\n", strerror(errno)); //other err
+							std::cerr << "Erreur accept():" << strerror(errno) << std::endl;
 							continue;
 						}
 						int flag = fcntl(clientFd, F_GETFL, 0);
                 		if (flag < 0)
 						{
-                			fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
+							std::cerr << "Erreur de fcntl() getfl:" << strerror(errno) << std::endl;
                 			close(clientFd);
                 			continue;
                 		}
                 		if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0)
 						{
-                			fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
+							std::cerr << "Erreur de fcntl() setfl:" << strerror(errno) << std::endl;
                 			close(clientFd);
                 			continue;
 						}
@@ -468,43 +467,47 @@ void server::run()
                             break;
                         default: // message
                             buffer[ret] = '\0';
-							//si le parsing est bon
-                            if (parsing(&this->_clients[i - 1], buffer))
-							{
-								//on recup le message parser
-								message	msg = this->_clients[i - 1].getMessage();
-								std::string	cmdName = msg.getCommand();
+                            //si le parsing est bon
+                             std::string fragment(buffer);
+                             if (!fragment.find("\r\n"))
+                              this->_clients[i - 1].getFullMessage().append(" " + fragment);
+                                          else {
+                              if (parsing(&this->_clients[i - 1], this->_clients[i - 1].getFullMessage()))
+                              {
+                              //on recup le message parser
+                              message	msg = this->_clients[i - 1].getMessage();
+                              std::string	cmdName = msg.getCommand();
 
-								//verif d'auth
-								bool	needsAuth = true;
-								if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
-									needsAuth = false;
-								if (needsAuth && !this->_clients[i - 1].getRegistered())
-								{
-									std::string	error = ":server 451 * :Vous n'etes pas enregistre\r\n";
-									send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
-									msg.clearMessage();
-									break;
-								}
+                              //verif d'auth
+                              bool	needsAuth = true;
+                              if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
+                                needsAuth = false;
+                              if (needsAuth && !this->_clients[i - 1].getRegistered())
+                              {
+                                std::string	error = ":server 451 * :Vous n'etes pas enregistre\r\n";
+                                send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
+                                msg.clearMessage();
+                                break;
+                              }
 
-								//verif de la cmd et exec
-								if (this->_cmdList.find(cmdName) != this->_cmdList.end())
-								{
-									bool	res;
-									res = (this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
-									if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
-										toRemove.push_back(i);
-								}
-								else
-								{
-									std::string	error = ":server 421 " + this->_clients[i - 1].getNick() + " " + cmdName + " :Commande inconnue\r\n";
-									send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
-								}
+                              //verif de la cmd et exec
+                              if (this->_cmdList.find(cmdName) != this->_cmdList.end())
+                              {
+                                bool	res;
+                                res = (this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+                                if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
+                                  toRemove.push_back(i);
+                              }
+                              else
+                              {
+                                std::string	error = ":server 421 " + this->_clients[i - 1].getNick() + " " + cmdName + " :Commande inconnue\r\n";
+                                send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
+                              }
 
-								msg.clearMessage();
-							}
-							}
-							break;
+                              msg.clearMessage();
+                            }
+                            }
+                            break;
                     }
                 }
             }
@@ -564,123 +567,5 @@ void server::run()
 
     }
 }
-/*---------------------------------------*/
-
-
-// void server::run() {
-//     struct pollfd pollingRequestServ;
-//     pollingRequestServ.fd = this->_serverFd;
-//     pollingRequestServ.events = POLLIN;
-//     this->_fds.push_back(pollingRequestServ);
-
-//     std::vector<int> toRemove;
-//     std::vector<int> toAdd;
-
-//     for (;;) {
-//         int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
-//         if (fdReady == -1 && errno != EINTR) {
-//             fprintf(stderr, "poll(): %s\n", strerror(errno));
-//             break;
-//         }
-//         if (fdReady <= 0) continue;
-
-//         for (size_t i = 0; i < this->_fds.size(); i++) {
-//             short rev = this->_fds[i].revents;
-//             if (!rev) continue;
-
-//             // erreurs/fin: marque pour suppression
-//             if (rev & (POLLHUP | POLLERR | POLLNVAL)) {
-//                 if (i != 0) toRemove.push_back((int)i);
-//                 continue;
-//             }
-//             if (!(rev & POLLIN)) continue;
-
-//             if (i == 0) {
-//                 // Accepter en rafale avec accept() + fcntl()
-//                 for (;;) {
-//                     struct sockaddr_storage clientAddr;
-//                     socklen_t addrLen = sizeof clientAddr;
-//                     int clientFd;
-//                     do {
-//                         clientFd = accept(this->_serverFd, (struct sockaddr*)&clientAddr, &addrLen);
-//                     } while (clientFd < 0 && errno == EINTR);
-
-//                     if (clientFd < 0) {
-//                         if (errno == EAGAIN || errno == EWOULDBLOCK) break; // backlog vidé
-//                         // erreur transitoire/conn abort: log et tente suivant
-//                         fprintf(stderr, "accept(): %s\n", strerror(errno));
-//                         continue;
-//                     }
-
-//                     // Rendre non bloquant et CLOEXEC immédiatement
-//                     int fl = fcntl(clientFd, F_GETFL, 0);
-//                     if (fl == -1 || fcntl(clientFd, F_SETFL, fl | O_NONBLOCK) == -1) {
-//                         fprintf(stderr, "fcntl(set O_NONBLOCK): %s\n", strerror(errno));
-//                         close(clientFd);
-//                         continue;
-//                     }
-//                     int fdfl = fcntl(clientFd, F_GETFD, 0);
-//                     if (fdfl == -1 || fcntl(clientFd, F_SETFD, fdfl | FD_CLOEXEC) == -1) {
-//                         fprintf(stderr, "fcntl(set FD_CLOEXEC): %s\n", strerror(errno));
-//                         close(clientFd);
-//                         continue;
-//                     }
-
-//                     toAdd.push_back(clientFd);
-//                     std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
-//                 }
-//             } else {
-//                 // Lecture non bloquante: drainer jusqu’à EAGAIN/EWOULDBLOCK
-//                 int cfd = this->_fds[i].fd;
-//                 for (;;) {
-//                     char buffer[513];
-//                     ssize_t ret;
-//                     do {
-//                         ret = recv(cfd, buffer, sizeof(buffer) - 1, 0);
-//                     } while (ret == -1 && errno == EINTR);
-
-//                     if (ret > 0) {
-//                         buffer[ret] = '\0';
-//                         if (parsing(&this->_clients[i - 1], buffer))
-//                             execute((int)i - 1);
-//                         continue; // tenter de vider le socket
-//                     }
-//                     if (ret == 0) { // fermeture pair
-//                         std::cout << "Client déconnecté fd=" << cfd << std::endl;
-//                         toRemove.push_back((int)i);
-//                         break;
-//                     }
-//                     if (errno == EAGAIN || errno == EWOULDBLOCK) break; // rien d’autre
-//                     std::cerr << "recv(): " << strerror(errno) << std::endl;
-//                     toRemove.push_back((int)i);
-//                     break;
-//                 }
-//             }
-//         }
-
-//         // Ajouter clients: plus de fcntl ici (déjà fait après accept)
-//         if (!toAdd.empty()) {
-//             for (std::vector<int>::reverse_iterator it = toAdd.rbegin(); it != toAdd.rend(); ++it) {
-//                 int clientFd = *it;
-//                 struct pollfd p; p.fd = clientFd; p.events = POLLIN;
-//                 this->_fds.push_back(p);
-//                 client newClient(clientFd);
-//                 this->_clients.push_back(newClient);
-//             }
-//             toAdd.clear();
-//         }
-
-//         // Supprimer clients en ordre décroissant
-//         if (!toRemove.empty()) {
-//             for (std::vector<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it) {
-//                 int idx = *it;
-//                 close(this->_fds[idx].fd);
-//                 this->_fds.erase(this->_fds.begin() + idx);
-//                 this->_clients.erase(this->_clients.begin() + (idx - 1));
-//             }
-//             toRemove.clear();
-//         }
-//     }
-// }
 
 /*---------------------------------------*/

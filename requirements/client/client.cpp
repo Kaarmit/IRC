@@ -18,8 +18,12 @@ int				client::getFd(void) const {
 	return (this->_fd);
 }
 
-message&			client::getMessage(void) {
+message&		client::getMessage(void) {
 	return (this->_msg);
+}
+
+std::string&		client::getFullMessage(void) {
+	return (this->_fullMessage);
 }
 
 bool			client::getRegistered(void) const {

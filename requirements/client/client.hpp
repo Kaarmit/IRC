@@ -14,6 +14,7 @@ class client
 		bool 						_registered;
 		time_t						_connexionTime;
 		message						_msg;
+		std::string					_fullMessage;
 		std::string					_serverName;
 		std::string					_host;
 		std::string					_nick;
@@ -35,6 +36,7 @@ class client
 		bool						getRegistered(void) const;
 		void						setRegistered(bool status);
 		message&					getMessage(void);//modif de Daryl: retourne un ref pour avoir levrai message et pas une cpy
+		std::string&				getFullMessage(void);
 		std::string					getServerName(void) const;
 		void						setServerName(std::string name);
 		std::string					getHost(void) const;
