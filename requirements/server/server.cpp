@@ -364,7 +364,7 @@ void server::run()
         int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
         if (fdReady == -1 && errno != EINTR)
 		{
-            fprintf(stderr, "Erreur de poll(): %s\n", strerror(errno));
+			std::cerr << "Erreur poll():" << strerror(errno) << std::endl;
             // close all fds ?
             // free qqc?
             break; // exit() au lieu de break; ?
@@ -389,19 +389,19 @@ void server::run()
 						{
 							if (errno == EAGAIN || errno == EWOULDBLOCK)
 								break; //no more client try to connect
-							fprintf(stderr, "No more clients wants to connect: %s\n", strerror(errno)); //other err
+							std::cerr << "Erreur accept():" << strerror(errno) << std::endl;
 							continue;
 						}
 						int flag = fcntl(clientFd, F_GETFL, 0);
                 		if (flag < 0)
 						{
-                			fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
+							std::cerr << "Erreur de fcntl() getfl:" << strerror(errno) << std::endl;
                 			close(clientFd);
                 			continue;
                 		}
                 		if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0)
 						{
-                			fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
+							std::cerr << "Erreur de fcntl() setfl:" << strerror(errno) << std::endl;
                 			close(clientFd);
                 			continue;
 						}
