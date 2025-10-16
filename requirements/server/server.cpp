@@ -47,6 +47,20 @@ char*	server::getPort() const
 void	server::handleNick(client* cli, message& msg)
 {
 	cli->setNick(msg.getParams()[0]);
+	message out;
+	out.setCommand("001");
+	out.setParams(cli->getNick());
+	out.setParams("Welcome to IRC " + cli->getNick());
+	std::string line = out.toIrcLine();
+	
+	cli->enqueueLine(line);
+	
+	for (size_t i = 0; i < this->_fds.size(); ++i){
+		if (this->_fds[i].fd == cli->getFd()) {
+            this->_fds[i].events |= POLLOUT;
+            break;
+		}
+	}
 }
 
 //USER
@@ -336,6 +350,8 @@ bool	parsing(client* c, char* rawMsg) {
 /*----------PROGRAMME-------------*/
 
 void server::run() {
+	
+	signal(SIGPIPE, SIG_IGN);
     struct pollfd pollingRequestServ;
     pollingRequestServ.fd = this->_serverFd;
     pollingRequestServ.events = POLLIN;
@@ -358,7 +374,7 @@ void server::run() {
 			continue;
         for (int i = 0; i < this->_fds.size(); i++)
 		{
-            if (this->_fds[i].revents & POLLIN)
+            if (this->_fds[i].revents && POLLIN)
 			{
                 if (i == 0) // signal sur socket serv = nouvelle(s) connexion(s) client
 				{
@@ -415,11 +431,10 @@ void server::run() {
                             break;
                         default: // message
                             buffer[ret] = '\0';
-							//recupere le buffer client et met ce que renvoie recv dedans
                             if (parsing(&this->_clients[i - 1], buffer))
 							{
 								//on recup le message parser
-								message&	msg = this->_clients[i - 1].getMessage();
+								message	msg = this->_clients[i - 1].getMessage();
 								std::string	cmdName = msg.getCommand();
 								//on verif si la cmd existe
 								if (this->_cmdList.find(cmdName) != this->_cmdList.end())
@@ -433,12 +448,38 @@ void server::run() {
 									//envoie de l'erreur au client aussi
 								}
 								msg.clearMessage();
-							}
+								}
 							break;
                     }
                 }
             }
         }
+		// POLLOUT & send
+		for (int i = 0; i < this->_fds.size(); i++)
+		{
+            if (!(this->_fds[i].revents & POLLOUT))
+				continue;
+			client& c = this->_clients[i - 1];
+			while (c.hasPending()){
+				const char* base = c.getOutbuf().data() + c.getBytesSent();
+				size_t left = c.getOutbuf().size() - c.getBytesSent();
+				
+				size_t n = send(this->_fds[i].fd, base, left, 0);
+				if (n > 0){
+					c.setBytesSent(c.getBytesSent() + n);
+					c.clearIfFlushed();
+					if (!(c.hasPending())) {
+						this->_fds[i].events &= ~POLLOUT;
+					}
+				}
+				else {
+					if (n < 0 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
+						toRemove.push_back(i); // mieux gerer cette erreur
+					}
+				}
+				break;
+			}
+		}
         // Ajouter les nouveaux clients dans _fds et _clients
         if (!toAdd.empty())
 		{
@@ -467,7 +508,6 @@ void server::run() {
         }
 
     }
-}
 /*---------------------------------------*/
 
 
