@@ -41,6 +41,15 @@ class client
 		std::string					getReal(void) const;
 		void						setReal(std::string name);
 		std::vector<std::string>	getChannel(void) const;
+		void						enqueueLine(const std::string& ircLine); // ajoute une ligne a la file d attente
+		bool 						hasPending() const;                      // reste-t-il des octets à envoyer ?
+    	void 						clearIfFlushed();                        // si tout envoyé -> vider && reset bytesSent
+		const std::string& 			getOutbuf() const;
+    	size_t 						getBytesSent() const;
+		std::string& 				getOutbuf();
+    	size_t& 					getBytesSent();
+		void 						setBytesSent(size_t value);
+};
 
 };
 
