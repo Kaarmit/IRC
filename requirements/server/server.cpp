@@ -52,9 +52,9 @@ void	server::handleNick(client* cli, message& msg)
 	out.setParams(cli->getNick());
 	out.setParams("Welcome to IRC " + cli->getNick());
 	std::string line = out.toIrcLine();
-	
+
 	cli->enqueueLine(line);
-	
+
 	for (size_t i = 0; i < this->_fds.size(); ++i){
 		if (this->_fds[i].fd == cli->getFd()) {
             this->_fds[i].events |= POLLOUT;
@@ -349,8 +349,8 @@ bool	parsing(client* c, char* rawMsg) {
 
 /*----------PROGRAMME-------------*/
 
-void server::run() {
-	
+void server::run()
+{
 	signal(SIGPIPE, SIG_IGN);
     struct pollfd pollingRequestServ;
     pollingRequestServ.fd = this->_serverFd;
@@ -439,7 +439,20 @@ void server::run() {
 								//on verif si la cmd existe
 								if (this->_cmdList.find(cmdName) != this->_cmdList.end())
 								{
-									//on execute
+									//on verifie si le client est registered
+									if (!this->_clients[i - 1].getRegistered())
+									{
+										if (!this->_clients[i - 1].getUser().empty() && !this->_clients[i - 1].getNick().empty())
+											this->_clients[i - 1].setRegistered(true);
+										else
+										{
+											if (this->_clients[i - 1].getTime() < 1min)
+												toRemove.push_back(i);
+											else
+												//mettre le client en pollout pour lui emvoyer un message specifique
+										}
+									}
+									//on execute la cmd
 									(this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
 								}
 								else
@@ -448,7 +461,7 @@ void server::run() {
 									//envoie de l'erreur au client aussi
 								}
 								msg.clearMessage();
-								}
+							}
 							break;
                     }
                 }
@@ -463,7 +476,7 @@ void server::run() {
 			while (c.hasPending()){
 				const char* base = c.getOutbuf().data() + c.getBytesSent();
 				size_t left = c.getOutbuf().size() - c.getBytesSent();
-				
+
 				size_t n = send(this->_fds[i].fd, base, left, 0);
 				if (n > 0){
 					c.setBytesSent(c.getBytesSent() + n);
@@ -508,6 +521,7 @@ void server::run() {
         }
 
     }
+}
 /*---------------------------------------*/
 
 

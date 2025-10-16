@@ -7,6 +7,7 @@ client::client()
 
 client::client(int clientFd): _fd(clientFd) {
 	this->_registered = false;
+	this->_connexionTime = time(NULL);
 }
 
 client::~client()
@@ -88,22 +89,27 @@ void						client::clearIfFlushed() {
 	}
 }
 
-const std::string& client::getOutbuf() const { 
-	return _outbuf; 
+const std::string& client::getOutbuf() const {
+	return _outbuf;
 }
 
-size_t client::getBytesSent() const { 
-	return _bytesSent; 
+size_t client::getBytesSent() const {
+	return _bytesSent;
 }
 
-std::string& client::getOutbuf() { 
-	return _outbuf; 
+std::string& client::getOutbuf() {
+	return _outbuf;
 }
 
-size_t& client::getBytesSent() { 
-	return _bytesSent; 
+size_t& client::getBytesSent() {
+	return _bytesSent;
 }
 
-void client::setBytesSent(size_t value) { 
-	_bytesSent = value; 
+void client::setBytesSent(size_t value) {
+	_bytesSent = value;
+}
+
+double	client::getTime() const
+{
+	return this->_connexionTime;
 }
