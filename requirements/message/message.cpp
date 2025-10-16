@@ -56,3 +56,25 @@ std::string						message::getCommand(void) const {
 std::vector<std::string>		message::getParams(void) const {
 	return (this->_params);
 }
+
+std::string						message::toIrcLine() const {
+	std::string line;
+	
+	if (!_prefix.empty()) 
+		line += ":" + _prefix + " ";
+	line += _command;
+	
+	for (size_t i = 0; i < _params.size(); ++i) {
+		if (i + 1 == _params.size()) 
+			line += " :" +_params[i];
+		else
+			line += " " + _params[i];
+	}
+	line += "\r\n";
+	
+	if (line.size() > 512) {
+		line.resize(510);
+		line += "\r\n";
+	}
+	return line;
+}
