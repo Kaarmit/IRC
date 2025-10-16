@@ -44,9 +44,9 @@ char*	server::getPort() const
 //PASS
 
 //NICK
-void	server::handleNick(client* cli)
+void	server::handleNick(client* cli, message msg)
 {
-	cli->setNick(cli->getMessage()->getParams()[0]);
+	cli->setNick(msg.getParams()[0]);
 }
 
 //USER
@@ -76,11 +76,6 @@ void	server::initCmdServer()
 	this->_cmdList["NICK"] = &server::handleNick;
 }
 
-void	server::execute(int idx)
-{
-	std::string cmd = this->_clients[idx].getMessage()->getCommand();
-	this->_cmdList[cmd](this->_clients[idx]);
-}
 /*-------------------------------------------------*/
 
 /*----------CREATION DU SOCKET DECOUTE-------------*/
@@ -194,7 +189,7 @@ void	server::initServSocket(char* port)
 
 // DNS hostname rules: a-z A-Z 0-9 "-" (not consecutive, dont start/end with it) "." (not consecutive) no other special characters
 bool	checkServName(std::string name) {
-	
+
 	for (std::string::iterator it = name.begin(); it != name.end(); it++) {
 		if (!std::isdigit(*it) && !std::isupper(*it) && !std::islower(*it) && *it != '.' && *it != '-')
 			return (false);
@@ -209,7 +204,7 @@ void	setIdentity(client* c) {
 	if (!prfx.empty()) {
 		std::size_t userIndex = prfx.find_first_of('!');
 		std::size_t hostIndex = prfx.find_first_of('@');
-		
+
 		if (userIndex == prfx.npos && hostIndex == prfx.npos) { // :server.name or :nick
 			if (checkServName(prfx))
 				c->setServerName(prfx);
@@ -219,7 +214,7 @@ void	setIdentity(client* c) {
 		else if (userIndex != prfx.npos) { // :nick!user or :nick!user@host
 			c->setNick(prfx.substr(0, userIndex));
 				if (hostIndex == prfx.npos)
-					c->setUser(prfx.substr(userIndex + 1));	
+					c->setUser(prfx.substr(userIndex + 1));
 				else {
 					c->setUser(prfx.substr(userIndex + 1, hostIndex));
 					c->setHost(prfx.substr(hostIndex + 1));
@@ -246,7 +241,7 @@ bool	checkIdentity(client* c, std::string prefix) {
 			if (c->getNick().compare(prfx.substr(0, userIndex)) != 0)
 				return (false);
 			if (hostIndex == prfx.npos) {
-				if (c->getUser().compare(prfx.substr(userIndex + 1)) != 0)	
+				if (c->getUser().compare(prfx.substr(userIndex + 1)) != 0)
 					return (false);
 			}
 			else {
@@ -263,7 +258,7 @@ bool	checkIdentity(client* c, std::string prefix) {
 }
 
 bool	checkCommand(client* c) {
-	std::string cmd = c->getMessage().getCommand();	
+	std::string cmd = c->getMessage().getCommand();
 	for (std::string::iterator it = cmd.begin(); it != cmd.end(); it++) {
 		if (!std::isupper(*it))
 			return (false);
@@ -326,10 +321,10 @@ void server::run() {
     std::vector<int> toRemove; // pour supprimer les clients
     std::vector<int> toAdd;    // pour ajouter les clients
 
-    while (true) 
+    while (true)
 	{
         int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
-        if (fdReady == -1 && errno != EINTR) 
+        if (fdReady == -1 && errno != EINTR)
 		{
             fprintf(stderr, "Erreur de poll(): %s\n", strerror(errno));
             // close all fds ?
@@ -338,12 +333,12 @@ void server::run() {
         }
         if (fdReady <= 0)
 			continue;
-        for (int i = 0; i < this->_fds.size(); i++) 
+        for (int i = 0; i < this->_fds.size(); i++)
 		{
-            if (this->_fds[i].revents & POLLIN) 
+            if (this->_fds[i].revents & POLLIN)
 			{
                 if (i == 0) // signal sur socket serv = nouvelle(s) connexion(s) client
-				{ 
+				{
 					while (true) // en 'rafale'
 					{
                     	struct sockaddr_storage clientAddr;
@@ -360,13 +355,13 @@ void server::run() {
 							continue;
 						}
 						int flag = fcntl(clientFd, F_GETFL, 0);
-                		if (flag < 0) 
+                		if (flag < 0)
 						{
                 			fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
                 			close(clientFd);
                 			continue;
                 		}
-                		if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0) 
+                		if (fcntl(clientFd, F_SETFL, flag | O_NONBLOCK) < 0)
 						{
                 			fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
                 			close(clientFd);
@@ -376,16 +371,16 @@ void server::run() {
                         std::cout << "Nouvelle connexion ! fd=" << clientFd << std::endl;
                     }
                 }
-                else 
+                else
 				{ // signal sur un socket client
                     std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
                     char buffer[513];
                     int ret;
-                    do 
+                    do
 					{
                         ret = recv(this->_fds[i].fd, buffer, sizeof(buffer) - 1, 0);
                     } while (ret == -1 && errno == EINTR);
-                    switch (ret) 
+                    switch (ret)
 					{
                         case (0): // déconnexion client
                             std::cout << "Client déconnecté fd=" << this->_fds[i].fd << std::endl;
@@ -393,13 +388,29 @@ void server::run() {
                             break;
                         case (-1): // erreur recv
                             std::cerr << "Erreur recv() : " << strerror(errno) << std::endl;
-                            toRemove.push_back(i); // t sur ? 
+                            toRemove.push_back(i); // t sur ? -> oui je crois, c'est le i du fd qui ici i != 0 jamais donc sur que c'est pas server on on supp le bon cli
                             break;
                         default: // message
                             buffer[ret] = '\0';
-                            if (parsing(&this->_clients[i - 1], buffer)) 
-                                execute(i - 1); // faire comme Claude un peu
-                            break;
+                            if (parsing(&this->_clients[i - 1], buffer))
+							{
+								//on recup le message parser
+								message	msg = this->_clients[i - 1].getMessage();
+								std::string	cmdName = msg.getCommand();
+								//on verif si la cmd existe
+								if (this->_cmdList.find(cmdName) != this->_cmdList.end())
+								{
+									//on execute
+									(this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+								}
+								else
+								{
+									std::cerr << "Commande inconnue: " << cmdName << std::endl;
+									//envoie de l'erreur au client aussi
+								}
+								msg.clearMessage();
+								}
+							break;
                     }
                 }
             }
@@ -407,7 +418,7 @@ void server::run() {
         // Ajouter les nouveaux clients dans _fds et _clients
         if (!toAdd.empty())
 		{
-            for (std::vector<int>::iterator it = toAdd.begin(); it != toAdd.end(); ++it) 
+            for (std::vector<int>::iterator it = toAdd.begin(); it != toAdd.end(); ++it)
 			{
                 int clientFd = *it;
                 struct pollfd pollingRequestClient;
@@ -421,7 +432,7 @@ void server::run() {
         }
         // Supprimer les clients
         if (!toRemove.empty()) {
-            for (std::vector<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it) 
+            for (std::vector<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it)
 			{
                 int idx = *it;
                 close(this->_fds[idx].fd);
@@ -430,7 +441,7 @@ void server::run() {
             }
             toRemove.clear();
         }
-        
+
     }
 }
 /*---------------------------------------*/
