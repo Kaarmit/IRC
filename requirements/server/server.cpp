@@ -42,10 +42,46 @@ char*	server::getPort() const
 /*--------------------CMD DU SERVER----------------*/
 
 //PASS
+bool	server::handlePass(client* cli, message& msg)
+{
+	//verif si cli deja enregistrer
+	if (cli->getRegistered())
+	{
+		std::string	error = ":server 462 " + cli->getNick() + " :You may not register\r\n";
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}
+
+	//verif si NICK ou USER a ete envoye avant pass
+	if (!cli->getNick().empty() || !cli->getUser().empty())
+	{
+		std::string	error = ":server 462 * :PASS must be sent before NICK/USER \r\n";
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}
+	//verif si on a tout les params dans PASS
+	if(msg.getParams().empty())
+	{
+		std::string	error = ":server 461 * :Not enough parameters\r\n";
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}
+	//verif du mdp
+	if (msg.getParams()[0] != this->getPassWord())
+	{
+		std::string	error = ":server 464 * :Password incorrect\r\n";
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}
+	//si tout opk, on set le pass a true ou return true
+	cli->setPass(msg.getParams()[0]);
+	return true;
+}
 
 //NICK
-void	server::handleNick(client* cli, message& msg)
+bool	server::handleNick(client* cli, message& msg)
 {
+	//verif si le nickname est deja pris
 	cli->setNick(msg.getParams()[0]);
 	message out;
 	out.setCommand("001");
@@ -61,50 +97,51 @@ void	server::handleNick(client* cli, message& msg)
             break;
 		}
 	}
+	return true;
 }
 
 //USER
-void	server::handleUser(client* cli, message& msg)
+bool	server::handleUser(client* cli, message& msg)
 {
 }
 //JOIN
-void	server::handleJoin(client* cli, message& msg)
+bool	server::handleJoin(client* cli, message& msg)
 {
 }
 //PART
-void	server::handlePart(client* cli, message& msg)
+bool	server::handlePart(client* cli, message& msg)
 {
 }
 //PRIVMSG
-void	server::handlePrivmsg(client* cli, message& msg)
+bool	server::handlePrivmsg(client* cli, message& msg)
 {
 }
 //KICK
-void	server::handleKick(client* cli, message& msg)
+bool	server::handleKick(client* cli, message& msg)
 {
 }
 //INVITE
-void	server::handleInvite(client* cli, message& msg)
+bool	server::handleInvite(client* cli, message& msg)
 {
 }
 //TOPIC
-void	server::handleTopic(client* cli, message& msg)
+bool	server::handleTopic(client* cli, message& msg)
 {
 }
 //MODE
-void	server::handleMode(client* cli, message& msg)
+bool	server::handleMode(client* cli, message& msg)
 {
 }
 //PING (optionnel)
-void	server::handlePing(client* cli, message& msg)
+bool	server::handlePing(client* cli, message& msg)
 {
 }
 //QUIT
-void	server::handleQuit(client* cli, message& msg)
+bool	server::handleQuit(client* cli, message& msg)
 {
 }
 //WHO(optionnel)
-void	server::handleWho(client* cli, message& msg)
+bool	server::handleWho(client* cli, message& msg)
 {
 }
 
@@ -431,36 +468,41 @@ void server::run()
                             break;
                         default: // message
                             buffer[ret] = '\0';
+							//si le parsing est bon
                             if (parsing(&this->_clients[i - 1], buffer))
 							{
 								//on recup le message parser
 								message	msg = this->_clients[i - 1].getMessage();
 								std::string	cmdName = msg.getCommand();
-								//on verif si la cmd existe
+
+								//verif d'auth
+								bool	needsAuth = true;
+								if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
+									needsAuth = false;
+								if (needsAuth && !this->_clients[i - 1].getRegistered())
+								{
+									std::string	error = ":server 451 * :Vous n'etes pas enregistre\r\n";
+									send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
+									msg.clearMessage();
+									break;
+								}
+
+								//verif de la cmd et exec
 								if (this->_cmdList.find(cmdName) != this->_cmdList.end())
 								{
-									//on verifie si le client est registered
-									if (!this->_clients[i - 1].getRegistered())
-									{
-										if (!this->_clients[i - 1].getUser().empty() && !this->_clients[i - 1].getNick().empty())
-											this->_clients[i - 1].setRegistered(true);
-										else
-										{
-											if (this->_clients[i - 1].getTime() < 1min)
-												toRemove.push_back(i);
-											else
-												//mettre le client en pollout pour lui emvoyer un message specifique
-										}
-									}
-									//on execute la cmd
-									(this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+									bool	res;
+									res = (this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+									if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
+										toRemove.push_back(i);
 								}
 								else
 								{
-									std::cerr << "Commande inconnue: " << cmdName << std::endl;
-									//envoie de l'erreur au client aussi
+									std::string	error = ":server 421 " + this->_clients[i - 1].getNick() + " " + cmdName + " :Commande inconnue\r\n";
+									send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
 								}
+
 								msg.clearMessage();
+							}
 							}
 							break;
                     }

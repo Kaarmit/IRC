@@ -70,6 +70,16 @@ void						client::setReal(std::string name) {
 	this->_real = name;
 }
 
+std::string					client::getPass(void) const
+{
+	return this->_pass;
+}
+
+void						client::setPass(std::string name)
+{
+	this->_pass = name;
+}
+
 std::vector<std::string>	client::getChannel(void) const {
 	return (this->_channels);
 }

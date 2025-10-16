@@ -32,25 +32,25 @@ class server
 		std::vector<struct pollfd>		_fds;
 		std::vector<client>				_clients;
 		std::map<std::string, channel>	_channels;
-		std::map<std::string, void (server::*)(client*, message&)>	_cmdList;
+		std::map<std::string, bool (server::*)(client*, message&)>	_cmdList;
 		std::string						_passWord;
 		int								_serverFd;
 		char*							_port;
 
 		/*cmd*/
-		void	handlePass(client* cli, message& msg);
-		void	handleNick(client* cli, message& msg);
-		void	handleUser(client* cli, message& msg);
-		void	handleJoin(client* cli, message& msg);
-		void	handlePart(client* cli, message& msg);
-		void	handlePrivmsg(client* cli, message& msg);
-		void	handleKick(client* cli, message& msg);
-		void	handleInvite(client* cli, message& msg);
-		void	handleTopic(client* cli, message& msg);
-		void	handleMode(client* cli, message& msg);
-		void	handlePing(client* cli, message& msg);
-		void	handleQuit(client* cli, message& msg);
-		void	handleWho(client* cli, message& msg);
+		bool	handlePass(client* cli, message& msg);
+		bool	handleNick(client* cli, message& msg);
+		bool	handleUser(client* cli, message& msg);
+		bool	handleJoin(client* cli, message& msg);
+		bool	handlePart(client* cli, message& msg);
+		bool	handlePrivmsg(client* cli, message& msg);
+		bool	handleKick(client* cli, message& msg);
+		bool	handleInvite(client* cli, message& msg);
+		bool	handleTopic(client* cli, message& msg);
+		bool	handleMode(client* cli, message& msg);
+		bool	handlePing(client* cli, message& msg);
+		bool	handleQuit(client* cli, message& msg);
+		bool	handleWho(client* cli, message& msg);
 		/*---*/
 
 		void	initCmdServer();

@@ -19,6 +19,7 @@ class client
 		std::string					_nick;
 		std::string   				_user;
 		std::string   				_real;
+		std::string					_pass;
 		std::string					_outbuf;
 		size_t						_bytesSent;
 		std::vector<std::string> 	_channels;
@@ -44,6 +45,8 @@ class client
 		void						setUser(std::string name);
 		std::string					getReal(void) const;
 		void						setReal(std::string name);
+		std::string					getPass(void) const;
+		void						setPass(std::string name);
 		std::vector<std::string>	getChannel(void) const;
 		void						enqueueLine(const std::string& ircLine); // ajoute une ligne a la file d attente
 		bool 						hasPending() const;                      // reste-t-il des octets à envoyer ?
