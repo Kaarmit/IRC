@@ -72,3 +72,38 @@ void						client::setReal(std::string name) {
 std::vector<std::string>	client::getChannel(void) const {
 	return (this->_channels);
 }
+
+void						client::enqueueLine(const std::string& ircLine) {
+	_outbuf += ircLine;
+}
+
+bool						client::hasPending() const {
+	return _bytesSent < _outbuf.size();
+}
+
+void						client::clearIfFlushed() {
+	if (_bytesSent >= _outbuf.size()) {
+		_outbuf.clear();
+		_bytesSent = 0;
+	}
+}
+
+const std::string& client::getOutbuf() const { 
+	return _outbuf; 
+}
+
+size_t client::getBytesSent() const { 
+	return _bytesSent; 
+}
+
+std::string& client::getOutbuf() { 
+	return _outbuf; 
+}
+
+size_t& client::getBytesSent() { 
+	return _bytesSent; 
+}
+
+void client::setBytesSent(size_t value) { 
+	_bytesSent = value; 
+}
