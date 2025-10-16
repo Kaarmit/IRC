@@ -17,7 +17,7 @@ int				client::getFd(void) const {
 	return (this->_fd);
 }
 
-message			client::getMessage(void) const {
+message&			client::getMessage(void) {
 	return (this->_msg);
 }
 
@@ -37,7 +37,7 @@ void			client::setServerName(std::string name) {
 	this->_serverName = name;
 }
 
-std::string					client::getHost(void) const { 
+std::string					client::getHost(void) const {
 	return (this->_host);
 }
 
