@@ -268,7 +268,7 @@ bool	checkServName(std::string name) {
 		if (!std::isdigit(*it) && !std::isupper(*it) && !std::islower(*it) && *it != '.' && *it != '-')
 			return (false);
 	}
-	if (std::count(name.begin(), name.end(), "-") != 1 || std::count(name.begin(), name.end(), ".") != 1)
+	if (std::count(name.begin(), name.end(), '-') != 1 || std::count(name.begin(), name.end(), '.') != 1)
 		return (false);
 	return (true);
 }
@@ -357,7 +357,7 @@ bool	parsing(client* c, std::string rawMsg) {
 	size_t len = rawMsg.size();
 	if (len > 512 || (rawMsg.find("\r\n") != (len-2)))
 		return (false);
-	if (rawMsg.front() == ':') {
+	if (rawMsg[0] == ':') {
 		ss >> prfx;
 		c->getMessage().setPrefix(prfx);
 		if (!c->getRegistered()) {
@@ -372,7 +372,14 @@ bool	parsing(client* c, std::string rawMsg) {
 	}
 	ss >> cmd;
 	c->getMessage().setCommand(cmd);
-	while(ss >> prm) {
+	while (ss >> prm) {
+		if (prm[0] == ':') {
+			std::string	sentence = prm.substr(1);
+			while (ss >> prm)
+				sentence.append(" " + prm);
+			c->getMessage().setParams(sentence);
+			break ;
+		}
 		c->getMessage().setParams(prm);
 		prm.clear();
 	}
