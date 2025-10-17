@@ -51,7 +51,7 @@ bool	server::isTaken(message& msg)
 
 				return true;
 		}
-		
+
 	else if (msg.getParams()[0] == "NICK")
 	{
 		for (size_t i = 0; i < _clients.size(); i++)
@@ -132,21 +132,21 @@ bool	server::handleNick(client* cli, message& msg)
 		std::string error = ": server 433 * :Nickname is already in use\r\n";
 		polloutActivate(cli);
 		send(cli->getFd(), error.c_str(), error.length(), 0);
-		return false; 
+		return false;
 	}
-	
+
 	std::string parsedNick = msg.getParams()[0];
 	for (size_t i = 0; i < parsedNick.length(); i++)
 	{
-		if ((parsedNick[0] <= 'a' || parsedNick[0] >= 'z') && 
+		if ((parsedNick[0] <= 'a' || parsedNick[0] >= 'z') &&
 				(parsedNick[0] <= 'A' || parsedNick[0] >= 'Z'))
 			{
 			std::string error = ": server 433 * :Erronoeous nickname\r\n";
 			polloutActivate(cli);
 			send(cli->getFd(), error.c_str(), error.length(), 0);
-			return false; 
+			return false;
 			}
-		if ((((parsedNick[i] <= 'a' || parsedNick[i] >= 'z') && 
+		if ((((parsedNick[i] <= 'a' || parsedNick[i] >= 'z') &&
 				(parsedNick[i] <= 'A' || parsedNick[i] >= 'Z')) &&
 					(parsedNick[i] < '0' || parsedNick[i] > '9')) &&
 						parsedNick[i] != '[' && parsedNick[i] != ']' &&
@@ -158,11 +158,11 @@ bool	server::handleNick(client* cli, message& msg)
 			std::string error = ": server 433 * :Erronoeous nickname\r\n";
 			polloutActivate(cli);
 			send(cli->getFd(), error.c_str(), error.length(), 0);
-			return false; 
+			return false;
 			}
-		
+
 	}
-	
+
 
 	cli->setNick(msg.getParams()[0]);
 	std::string out = "Your NICK has been saved";
@@ -186,6 +186,42 @@ bool	server::handlePart(client* cli, message& msg)
 //PRIVMSG
 bool	server::handlePrivmsg(client* cli, message& msg)
 {
+	/*client to client*/
+	//cli veut envoyer un msg.params[1] a msg.params[0]
+	//etape 1: est ce qu'il y a les deux params?
+		//erreur 411 si pas de dest
+		//erreur 412 si pas de msg
+	//etape 2: verif d'auth de cli
+		//erreur 401 si utilisateur inconnu
+	//etape 3: le destinataire msg.params[0] existe?
+		//erreur 401 si utilisateur inconnu
+	//etape 4: construiruction du message
+		//prefix : name!name@host
+		//cmd : PRIVMSG
+		//dest : name
+		//msg : blabla\r\n
+	//etape 5: envoie du message au destinataire
+
+	/*client to channel*/
+	//cli veut envoyer un msg.params[1] au channel msg.params[0]
+	//etape 1: est ce qu'il y a les deux params?
+		//erreur 411 si pas de dest
+		//erreur 412 si pas de msg
+	//etape 2: verif d'auth de cli
+		//erreur 451 si utilisateur inconnu
+	//etape 3: le destinataire msg.params[0] existe?
+		//erreur 403 si channel n'existe pas
+	//etape 4: verif si le user est dans le channel
+		//erreur 404 si ce n'est pas le cas et si channel en mode +m et user not operateur
+	//etape 4: construiruction du message
+		//prefix : name!name@host
+		//cmd : PRIVMSG
+		//dest : name
+		//msg : blabla\r\n
+	//etape 5: envoie du message au destinataire
+		//on boucle sur tous les membres du channel
+			//on envoie a tous sauf le cli
+
 }
 //KICK
 bool	server::handleKick(client* cli, message& msg)
