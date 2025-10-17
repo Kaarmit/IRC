@@ -53,6 +53,8 @@ class server
 		bool	handleWho(client* cli, message& msg);
 		/*---*/
 
+		bool	isTaken(message& msg);
+		void	polloutActivate(client* cli);
 		void	initCmdServer();
 
 	public:
