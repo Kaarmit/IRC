@@ -475,44 +475,45 @@ void server::run()
                         default: // message
                             buffer[ret] = '\0';
                             //si le parsing est bon
-                             std::string fragment(buffer);
-                             if (!fragment.find("\r\n"))
-                              this->_clients[i - 1].getFullMessage().append(" " + fragment);
-                                          else {
-                              if (parsing(&this->_clients[i - 1], this->_clients[i - 1].getFullMessage()))
-                              {
-                              //on recup le message parser
-                              message	msg = this->_clients[i - 1].getMessage();
-                              std::string	cmdName = msg.getCommand();
+                            std::string fragment(buffer);
+                            if (!fragment.find("\r\n"))
+                            	this->_clients[i - 1].getFullMessage().append(" " + fragment);
+                            else
+							{
+                            	if (parsing(&this->_clients[i - 1], this->_clients[i - 1].getFullMessage()))
+								{
+									//on recup le message parser
+									message	msg = this->_clients[i - 1].getMessage();
+									std::string	cmdName = msg.getCommand();
 
-                              //verif d'auth
-                              bool	needsAuth = true;
-                              if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
-                                needsAuth = false;
-                              if (needsAuth && !this->_clients[i - 1].getRegistered())
-                              {
-                                std::string	error = ":server 451 * :Vous n'etes pas enregistre\r\n";
-                                send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
-                                msg.clearMessage();
-                                break;
-                              }
+									//verif d'auth
+									bool	needsAuth = true;
+									if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
+										needsAuth = false;
+									if (needsAuth && !this->_clients[i - 1].getRegistered())
+									{
+										std::string	error = ":server 451 * :Vous n'etes pas enregistre\r\n";
+										send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
+										msg.clearMessage();
+										break;
+									}
 
-                              //verif de la cmd et exec
-                              if (this->_cmdList.find(cmdName) != this->_cmdList.end())
-                              {
-                                bool	res;
-                                res = (this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
-                                if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
-                                  toRemove.push_back(i);
-                              }
-                              else
-                              {
-                                std::string	error = ":server 421 " + this->_clients[i - 1].getNick() + " " + cmdName + " :Commande inconnue\r\n";
-                                send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
-                              }
+									//verif de la cmd et exec
+									if (this->_cmdList.find(cmdName) != this->_cmdList.end())
+									{
+										bool	res;
+										res = (this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
+										toRemove.push_back(i);
+									}
+									else
+									{
+										std::string	error = ":server 421 " + this->_clients[i - 1].getNick() + " " + cmdName + " :Commande inconnue\r\n";
+										send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
+									}
 
-                              msg.clearMessage();
-                            }
+									msg.clearMessage();
+								}
                             }
                             break;
                     }
