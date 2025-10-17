@@ -41,6 +41,40 @@ char*	server::getPort() const
 
 /*--------------------CMD DU SERVER----------------*/
 
+// user/nick/jsp deja pris ?
+bool	server::isTaken(message& msg)
+{
+	if (msg.getParams()[0] == "USER")
+		for (size_t i = 0; i < _clients.size(); i++)
+		{
+			if (msg.getParams()[0] == _clients[i].getUser())
+
+				return true;
+		}
+		
+	else if (msg.getParams()[0] == "NICK")
+	{
+		for (size_t i = 0; i < _clients.size(); i++)
+		{
+			if (msg.getParams()[0] == _clients[i].getNick())
+				return true;
+		}
+	}
+	return false;
+}
+
+// FONCTION POUR ACTIVER POLLOUT
+void	server::polloutActivate(client* cli)
+{
+	for (size_t i = 0; i < this->_fds.size(); ++i){
+		if (this->_fds[i].fd == cli->getFd()) {
+            this->_fds[i].events |= POLLOUT;
+            break;
+		}
+	}
+	return;
+}
+
 //PASS
 bool	server::handlePass(client* cli, message& msg)
 {
@@ -56,6 +90,7 @@ bool	server::handlePass(client* cli, message& msg)
 	if (!cli->getNick().empty() || !cli->getUser().empty())
 	{
 		std::string	error = ":server 462 * :PASS must be sent before NICK/USER \r\n";
+		polloutActivate(cli);
 		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false;
 	}
@@ -63,6 +98,7 @@ bool	server::handlePass(client* cli, message& msg)
 	if(msg.getParams().empty())
 	{
 		std::string	error = ":server 461 * :Not enough parameters\r\n";
+		polloutActivate(cli);
 		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false;
 	}
@@ -70,6 +106,7 @@ bool	server::handlePass(client* cli, message& msg)
 	if (msg.getParams()[0] != this->getPassWord())
 	{
 		std::string	error = ":server 464 * :Password incorrect\r\n";
+		polloutActivate(cli);
 		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false;
 	}
@@ -78,25 +115,59 @@ bool	server::handlePass(client* cli, message& msg)
 	return true;
 }
 
+
 //NICK
 bool	server::handleNick(client* cli, message& msg)
 {
-	//verif si le nickname est deja pris
-	cli->setNick(msg.getParams()[0]);
-	message out;
-	out.setCommand("001");
-	out.setParams(cli->getNick());
-	out.setParams("Welcome to IRC " + cli->getNick());
-	std::string line = out.toIrcLine();
-
-	cli->enqueueLine(line);
-
-	for (size_t i = 0; i < this->_fds.size(); ++i){
-		if (this->_fds[i].fd == cli->getFd()) {
-            this->_fds[i].events |= POLLOUT;
-            break;
-		}
+	if (msg.getParams().empty())
+	{
+		std::string	error = ":server 431 * :No nickname given\r\n";
+		polloutActivate(cli);
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
 	}
+
+	if(isTaken(msg))
+	{
+		std::string error = ": server 433 * :Nickname is already in use\r\n";
+		polloutActivate(cli);
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false; 
+	}
+	
+	std::string parsedNick = msg.getParams()[0];
+	for (size_t i = 0; i < parsedNick.length(); i++)
+	{
+		if ((parsedNick[0] <= 'a' || parsedNick[0] >= 'z') && 
+				(parsedNick[0] <= 'A' || parsedNick[0] >= 'Z'))
+			{
+			std::string error = ": server 433 * :Erronoeous nickname\r\n";
+			polloutActivate(cli);
+			send(cli->getFd(), error.c_str(), error.length(), 0);
+			return false; 
+			}
+		if ((((parsedNick[i] <= 'a' || parsedNick[i] >= 'z') && 
+				(parsedNick[i] <= 'A' || parsedNick[i] >= 'Z')) &&
+					(parsedNick[i] < '0' || parsedNick[i] > '9')) &&
+						parsedNick[i] != '[' && parsedNick[i] != ']' &&
+							parsedNick[i] != '\'' && parsedNick[i] != '`' &&
+								parsedNick[i] != '_' && parsedNick[i] != '^' &&
+									parsedNick[i] != '{'  && parsedNick[i] != '}' &&
+										parsedNick[i] != '|')
+			{
+			std::string error = ": server 433 * :Erronoeous nickname\r\n";
+			polloutActivate(cli);
+			send(cli->getFd(), error.c_str(), error.length(), 0);
+			return false; 
+			}
+		
+	}
+	
+
+	cli->setNick(msg.getParams()[0]);
+	std::string out = "Your NICK has been saved";
+	polloutActivate(cli);
+	send(cli->getFd(), out.c_str(), out.length(), 0);
 	return true;
 }
 
