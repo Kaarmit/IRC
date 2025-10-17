@@ -486,7 +486,7 @@ void server::run()
         }
         if (fdReady <= 0)
 			continue;
-        for (int i = 0; i < this->_fds.size(); i++)
+        for (size_t i = 0; i < this->_fds.size(); i++)
 		{
             if (this->_fds[i].revents && POLLIN)
 			{
@@ -592,7 +592,7 @@ void server::run()
             }
         }
 		// POLLOUT & send
-		for (int i = 0; i < this->_fds.size(); i++)
+		for (size_t i = 0; i < this->_fds.size(); i++)
 		{
             if (!(this->_fds[i].revents & POLLOUT))
 				continue;
