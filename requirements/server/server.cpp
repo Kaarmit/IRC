@@ -1,6 +1,8 @@
 
 #include "server.hpp"
 
+bool		stopSignal;
+
 /*---------CONSTRUCTOR/DESTRUCTOR-----------*/
 server::server(char* port, char* pwd): _port(port) {
 	std::stringstream ssMdp(pwd);
@@ -9,8 +11,11 @@ server::server(char* port, char* pwd): _port(port) {
 	std::cout << "Initialisation du Serveur IRC" << std::endl;
 	this->initCmdServer();
 	this->initServSocket(this->_port);
+	stopSignal = false;
+	initStopSignal();
 	std::cout << "Server pret." << std::endl;
 	this->run();
+	
 }
 
 server::~server()
@@ -18,7 +23,6 @@ server::~server()
 	std::cout << "Arret du server IRC, bye bye." << std::endl;
 }
 /*-------------------------*/
-
 
 /*---------GETTER-----------*/
 
@@ -344,35 +348,6 @@ bool	checkServName(std::string name) {
 	return (true);
 }
 
-void	setIdentity(client* c) {
-	std::string	prfx = c->getMessage().getPrefix();
-	if (!prfx.empty()) {
-		std::size_t userIndex = prfx.find_first_of('!');
-		std::size_t hostIndex = prfx.find_first_of('@');
-
-		if (userIndex == prfx.npos && hostIndex == prfx.npos) { // :server.name or :nick
-			if (checkServName(prfx))
-				c->setServerName(prfx);
-			else
-				c->setNick(prfx);
-		}
-		else if (userIndex != prfx.npos) { // :nick!user or :nick!user@host
-			c->setNick(prfx.substr(0, userIndex));
-				if (hostIndex == prfx.npos)
-					c->setUser(prfx.substr(userIndex + 1));
-				else {
-					c->setUser(prfx.substr(userIndex + 1, hostIndex));
-					c->setHost(prfx.substr(hostIndex + 1));
-				}
-		}
-		else { // (hostIndex != prfx.npos) // :nick@host
-			c->setNick(prfx.substr(0, hostIndex));
-			c->setHost(prfx.substr(hostIndex + 1));
-		}
-	}
-	return ;
-}
-
 bool	checkIdentity(client* c, std::string prefix) {
 	std::string	prfx = c->getMessage().getPrefix();
 	if (!prfx.empty()) {
@@ -431,15 +406,8 @@ bool	parsing(client* c, std::string rawMsg) {
 	if (rawMsg[0] == ':') {
 		ss >> prfx;
 		c->getMessage().setPrefix(prfx);
-		if (!c->getRegistered()) {
-			setIdentity(c);
-			if (!c->getNick().empty() && !c->getUser().empty())
-				c->setRegistered(true);
-		}
-		else {
-			if (!checkIdentity(c, prfx))
-				return (false);
-		}
+		if (!checkIdentity(c, prfx))
+			return (false);
 	}
 	ss >> cmd;
 	c->getMessage().setCommand(cmd);
@@ -461,11 +429,20 @@ bool	parsing(client* c, std::string rawMsg) {
 
 /*---------------------------------------*/
 
+/*----------SIGNAUX-------------*/
+
+void		initStopSignal(){
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+
+}
+
+/*---------------------------------------*/
+
 /*----------PROGRAMME-------------*/
 
 void server::run()
 {
-	signal(SIGPIPE, SIG_IGN);
     struct pollfd pollingRequestServ;
     pollingRequestServ.fd = this->_serverFd;
     pollingRequestServ.events = POLLIN;
@@ -476,6 +453,11 @@ void server::run()
 
     while (true)
 	{
+		if (stopSignal)
+		{
+			//close tous les fd tout clean etc.
+			break;
+		}
         int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
         if (fdReady == -1 && errno != EINTR)
 		{
