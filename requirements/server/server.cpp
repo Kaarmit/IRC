@@ -1,7 +1,7 @@
 
 #include "server.hpp"
 
-bool		stopSignal;
+volatile sig_atomic_t		stopSignal;
 
 /*---------CONSTRUCTOR/DESTRUCTOR-----------*/
 server::server(char* port, char* pwd): _port(port) {
@@ -11,7 +11,7 @@ server::server(char* port, char* pwd): _port(port) {
 	std::cout << "Initialisation du Serveur IRC" << std::endl;
 	this->initCmdServer();
 	this->initServSocket(this->_port);
-	stopSignal = false;
+	stopSignal = 0;
 	initStopSignal();
 	std::cout << "Server pret." << std::endl;
 	this->run();
@@ -182,6 +182,13 @@ bool	server::handleUser(client* cli, message& msg)
 //JOIN
 bool	server::handleJoin(client* cli, message& msg)
 {
+	//to do:
+	//create the channel if it doesn't exist and add it to the server's channel map
+	//add the client to the channel's client list
+	//add the channel to the client's channel list
+	//handle channel modes and keys if provided
+	//set the channel topic if provided
+	//send the appropriate messages to the client and the channel members
 }
 //PART
 bool	server::handlePart(client* cli, message& msg)
@@ -431,10 +438,21 @@ bool	parsing(client* c, std::string rawMsg) {
 
 /*----------SIGNAUX-------------*/
 
-void		initStopSignal(){
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
+void		signalHandling(int signum) {
+	(void)signum;
+	stopSignal = 1;
+	return;
+}
 
+void		initStopSignal(void) {
+	struct sigaction sa;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sa.sa_handler = signalHandling;
+	sigaction(SIGQUIT, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGUSR1, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
 }
 
 /*---------------------------------------*/
@@ -446,6 +464,7 @@ void server::run()
     struct pollfd pollingRequestServ;
     pollingRequestServ.fd = this->_serverFd;
     pollingRequestServ.events = POLLIN;
+	pollingRequestServ.revents = 0;
     this->_fds.push_back(pollingRequestServ);
 
     std::vector<int> toRemove; // pour supprimer les clients
