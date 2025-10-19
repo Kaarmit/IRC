@@ -1,48 +1,104 @@
 
 #include "client.hpp"
 
-client::client()
+client::client(void)
 {
 }
 
 client::client(int clientFd): _fd(clientFd) {
 	this->_registered = false;
-	this->_connexionTime = time(NULL);
+	this->_fullMessage = "";
+	this->_msg.clearMessage();
+	this->_serverName = "";
+	this->_host = "";
+	this->_nick = "";
+	this->_user = "";
+	this->_real = "";
+	this->_pass = "";
+	this->_outbuf = "";
+	this->_bytesSent = 0;
+	this->_channels.clear();
+	this->_connexionTime = time(NULL); // a revoir
+	return;
 }
 
-client::~client()
+client::client(const client& copy)
+{
+	*this = copy;
+}
+
+client& 					client::operator=(const client& rhs)
+{
+	if (this != &rhs)
+	{
+		this->_fd = rhs.getFd();
+		this->_registered = rhs.getRegistered();
+		this->_fullMessage = rhs.getFullMessage();
+		this->_msg = rhs.getMessage();
+		this->_serverName = rhs.getServerName();
+		this->_host = rhs.getHost();
+		this->_nick = rhs.getNick();
+		this->_user = rhs.getUser();
+		this->_real = rhs.getReal();
+		this->_pass = rhs.getPass();
+		this->_outbuf = rhs.getOutbuf();
+		this->_bytesSent = rhs.getBytesSent();
+		this->_channels = rhs.getChannelList();
+		this->_connexionTime = rhs.getTime();
+	}
+	return (*this);
+}
+
+client::~client(void)
 {
 }
 
-int				client::getFd(void) const {
+int							client::getFd(void) const 
+{
 	return (this->_fd);
 }
 
-message&		client::getMessage(void) {
+message&					client::getMessage(void) 
+{
 	return (this->_msg);
 }
 
-std::string&		client::getFullMessage(void) {
+message						client::getMessage(void) const
+{
+	return (this->_msg);
+}
+
+std::string					client::getFullMessage(void) const 
+{
 	return (this->_fullMessage);
 }
 
-bool			client::getRegistered(void) const {
+std::string&				client::getFullMessage(void) 
+{
+	return (this->_fullMessage);
+}
+
+bool						client::getRegistered(void) const {
 	return (this->_registered);
 }
 
-void			client::setRegistered(bool status) {
+void						client::setRegistered(bool status) 
+{
 	this->_registered = status;
 }
 
-std::string		client::getServerName(void) const {
+std::string					client::getServerName(void) const 
+{
 	return (this->_serverName);
 }
 
-void			client::setServerName(std::string name) {
+void						client::setServerName(std::string name) 
+{
 	this->_serverName = name;
 }
 
-std::string					client::getHost(void) const {
+std::string					client::getHost(void) const 
+{
 	return (this->_host);
 }
 
@@ -50,15 +106,18 @@ void						client::setHost(std::string name) {
 	this->_host = name;
 }
 
-std::string					client::getNick(void) const {
+std::string					client::getNick(void) const 
+{
 	return (this->_nick);
 }
 
-void						client::setNick(std::string name) {
+void						client::setNick(std::string name) 
+{
 	this->_nick = name;
 }
 
-std::string					client::getUser(void) const {
+std::string					client::getUser(void) const 
+{
 	return (this->_user);
 }
 
@@ -66,7 +125,8 @@ void						client::setUser(std::string name) {
 	this->_user = name;
 }
 
-std::string					client::getReal(void) const {
+std::string					client::getReal(void) const 
+{
 	return (this->_real);
 }
 
@@ -84,34 +144,46 @@ void						client::setPass(std::string name)
 	this->_pass = name;
 }
 
-std::list<std::string>	client::getChannelList(void) const {
+std::list<std::string>		client::getChannelList(void) const
+{
 	return (this->_channels);
 }
 
-void						client::enqueueLine(const std::string& ircLine) {
+std::list<std::string>&		client::getChannelList(void)
+{
+	return (this->_channels);
+}
+
+void						client::enqueueLine(const std::string& ircLine) 
+{
 	_outbuf += ircLine;
 }
 
-bool						client::hasPending() const {
+bool						client::hasPending() const 
+{
 	return _bytesSent < _outbuf.size();
 }
 
-void						client::clearIfFlushed() {
+void						client::clearIfFlushed() 
+{
 	if (_bytesSent >= _outbuf.size()) {
 		_outbuf.clear();
 		_bytesSent = 0;
 	}
 }
 
-const std::string& client::getOutbuf() const {
+const std::string& client::getOutbuf() const 
+{
 	return _outbuf;
 }
 
-size_t client::getBytesSent() const {
+size_t client::getBytesSent() const 
+{
 	return _bytesSent;
 }
 
-std::string& client::getOutbuf() {
+std::string& client::getOutbuf() 
+{
 	return _outbuf;
 }
 
@@ -119,7 +191,8 @@ size_t& client::getBytesSent() {
 	return _bytesSent;
 }
 
-void client::setBytesSent(size_t value) {
+void client::setBytesSent(size_t value) 
+{
 	_bytesSent = value;
 }
 
@@ -128,12 +201,14 @@ double	client::getTime() const
 	return this->_connexionTime;
 }
 
-bool						client::operator==(client & const rhs) {
+bool						client::operator==(client & const rhs) 
+{
 	if (this == &rhs || this->_fd == rhs.getFd())
 		return (true);
 	return (false);
 }
 
-bool						client::operator!=(client & const rhs) {
+bool						client::operator!=(client & const rhs) 
+{
 	return (!(*this == rhs));
 }

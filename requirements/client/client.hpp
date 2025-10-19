@@ -13,8 +13,8 @@ class client
 		int 						_fd;
 		bool 						_registered;
 		time_t						_connexionTime;
-		message						_msg;
 		std::string					_fullMessage;
+		message						_msg;
 		std::string					_serverName;
 		std::string					_host;
 		std::string					_nick;
@@ -25,17 +25,21 @@ class client
 		size_t						_bytesSent;
 		std::list<std::string> 		_channels;
 
-		client();
+		client(void);
 
 	public :
 
 		client(int clientFd);
-		~client();
+		client(const client& copy);
+		client& 					operator=(const client& rhs);
+		~client(void);
 
 		int							getFd(void) const;
 		bool						getRegistered(void) const;
 		void						setRegistered(bool status);
+		message						getMessage(void) const;
 		message&					getMessage(void);//modif de Daryl: retourne un ref pour avoir levrai message et pas une cpy
+		std::string					getFullMessage(void) const;
 		std::string&				getFullMessage(void);
 		std::string					getServerName(void) const;
 		void						setServerName(std::string name);
@@ -50,6 +54,7 @@ class client
 		std::string					getPass(void) const;
 		void						setPass(std::string name);
 		std::list<std::string>		getChannelList(void) const;
+		std::list<std::string>&		getChannelList(void);
 		void						enqueueLine(const std::string& ircLine); // ajoute une ligne a la file d attente
 		bool 						hasPending() const;                      // reste-t-il des octets à envoyer ?
     	void 						clearIfFlushed();                        // si tout envoyé -> vider && reset bytesSent
