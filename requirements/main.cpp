@@ -12,7 +12,7 @@ int	main(int argc, char** argv)
 
 	/*-------TEST-------------*/
 	std::cout << serveur.getPassWord() << std::endl;
-	std::cout << serveur.getFd() << std::endl;
+	std::cout << serveur.getServerFd() << std::endl;
 	std::cout << serveur.getPort() << std::endl;
 	/*-----------------------*/
 	return 0;
