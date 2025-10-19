@@ -61,12 +61,14 @@ class server
 		server(char* port, char* pwd);
 		~server();
 
-		void	initServSocket(char* port);
-		void	run();
+		void			initServSocket(char* port);
+		void			run();
 
-		std::string	getPassWord() const;
-		int			getFd() const;
-		char*		getPort() const;
+		std::vector<client>				getClients() const;
+		std::map<std::string, channel>	getChannels() const;
+		int								getServerFd() const;
+		std::string						getPassWord() const;
+		char*							getPort() const;
 };
 
 #endif

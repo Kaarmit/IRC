@@ -26,12 +26,22 @@ server::~server()
 
 /*---------GETTER-----------*/
 
+std::vector<client>				server::getClients() const 
+{
+	return this->_clients;
+}
+
+std::map<std::string, channel>	server::getChannels() const 
+{
+	return this->_channels;
+}
+
 std::string	server::getPassWord() const
 {
 	return this->_passWord;
 }
 
-int	server::getFd() const
+int	server::getServerFd() const
 {
 	return this->_serverFd;
 }
@@ -40,6 +50,7 @@ char*	server::getPort() const
 {
 	return this->_port;
 }
+
 /*-------------------------*/
 
 
@@ -182,13 +193,102 @@ bool	server::handleUser(client* cli, message& msg)
 //JOIN
 bool	server::handleJoin(client* cli, message& msg)
 {
-	//to do:
-	//create the channel if it doesn't exist and add it to the server's channel map
-	//add the client to the channel's client list
-	//add the channel to the client's channel list
-	//handle channel modes and keys if provided
-	//set the channel topic if provided
-	//send the appropriate messages to the client and the channel members
+	//check if registered
+	if (!cli->getRegistered())
+	{
+		std::string	error = "\r\n";
+		polloutActivate(cli);
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}	
+	std::vector<std::string> params = msg.getParams();
+	//check if enough parameters are provided
+	if (params.empty())
+	{
+		std::string	error = "\r\n";
+		polloutActivate(cli);
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}
+	// check if "join 0" = leave all channels;
+	if (params[0] == "0" && params.size() == 1) {
+		//client must leave all channels
+		//server send msg to client saying he left them all
+		return (true);
+	}
+	//avec une commande /join #chan1,#chan2 key1,key2 
+	//boucler sur param
+		//subdiviser en deux vect chanName, pwd
+	//parcourir le vect chanName
+	{
+		// check if channel name starts with # or & 
+		if (params[0][0] != '#' && params[0][0] != '&' && params[0][0] != '+')
+		{
+			std::string	error = "\r\n";
+			polloutActivate(cli);
+			send(cli->getFd(), error.c_str(), error.length(), 0);
+			return false;
+		}
+		//search for channel name 
+		std::map<std::string, channel>::iterator itChan = this->_channels.find(msg.getParams()[0]);
+		if (itChan == this->_channels.end())
+		{
+			//create the channel if itChan doesn't exist
+			//add the client to the channel's client list (channel constructor)
+			channel newChannel(params[0], *cli);
+			//add new channel to the server's channel map
+			this->_channels[params[0]] = newChannel;
+			//add the channel to the client's channel list
+			cli->getChannelList().push_back(params[0]);
+		}
+		else
+		{
+			//check if client is invited
+			if (itChan->second.isInviteOnly())
+			{
+				std::list<client> invitedList = itChan->second.getInvitedList();
+				if (std::find(invitedList.begin(), invitedList.end(), *cli) == invitedList.end())
+				{
+					//not invited can't enter
+					std::string	error = "\r\n";
+					polloutActivate(cli);
+					send(cli->getFd(), error.c_str(), error.length(), 0);
+					return false;
+				}
+			}
+			//check if theres a channel key/password
+			if (!itChan->second.getKey().empty())
+			{
+				if (std::find(params.begin(), params.end(), itChan->second.getKey()) == params.end())
+				{
+					std::string	error = "\r\n";
+					polloutActivate(cli);
+					send(cli->getFd(), error.c_str(), error.length(), 0);	
+					return false;
+				}
+			}
+			//check if theres a limit
+			if (itChan->second.getLimit() != -1)
+			{
+				if (itChan->second.getLimit() <= itChan->second.getClientList().size())
+				{
+					std::string	error = "\r\n";
+					polloutActivate(cli);
+					send(cli->getFd(), error.c_str(), error.length(), 0);
+					return false;
+				}
+			}
+			//add the channel to the client's channel list
+			cli->getChannelList().push_back(params[0]);
+			//add the client to the channel's client list
+			itChan->second.getClientList().push_back(*cli);
+		}		
+		//send the appropriate message to the client 
+		//
+		//send the appropriate message to the channel members
+		//
+	}
+	return (true);	
 }
 //PART
 bool	server::handlePart(client* cli, message& msg)
@@ -644,7 +744,11 @@ void server::run()
             }
             toRemove.clear();
         }
-
+		// checker si channels vides:
+		// 0. iterer sur map serv et check second.size() == 0
+		// 1. recup la liste de client du channel 
+		// 2. pr chaque client de la liste: client->getChannelList().remove(second.getChannelName())
+		// 3. enlever de channel map serv
     }
 }
 
