@@ -4,6 +4,10 @@
 volatile sig_atomic_t		stopSignal;
 
 /*---------CONSTRUCTOR/DESTRUCTOR-----------*/
+server::server(void)
+{
+}
+
 server::server(char* port, char* pwd): _port(port) {
 	std::stringstream ssMdp(pwd);
 	ssMdp >> this->_passWord;
@@ -15,7 +19,26 @@ server::server(char* port, char* pwd): _port(port) {
 	initStopSignal();
 	std::cout << "Server pret." << std::endl;
 	this->run();
-	
+}
+
+server::server(const server& copy)
+{
+	*this = copy;
+}
+
+server&			server::operator=(const server& rhs)
+{
+	if (this != &rhs)
+	{
+		this->_fds = rhs._fds;
+		this->_clients = rhs._clients;
+		this->_channels = rhs._channels;
+		this->_cmdList = rhs._cmdList;
+		this->_passWord = rhs._passWord;
+		this->_serverFd = rhs._serverFd;
+		this->_port = rhs._port;
+	}
+	return (*this);
 }
 
 server::~server()
@@ -26,12 +49,32 @@ server::~server()
 
 /*---------GETTER-----------*/
 
-std::vector<client>				server::getClients() const 
+std::vector<struct pollfd>		server::getFds() const
+{
+	return this->_fds;
+}
+
+std::vector<struct pollfd>&		server::getFds() 
+{
+	return this->_fds;
+}
+
+std::list<client>				server::getClients() const 
+{
+	return this->_clients;
+}
+
+std::list<client>&				server::getClients() 
 {
 	return this->_clients;
 }
 
 std::map<std::string, channel>	server::getChannels() const 
+{
+	return this->_channels;
+}
+
+std::map<std::string, channel>&	server::getChannels() 
 {
 	return this->_channels;
 }
@@ -60,18 +103,18 @@ char*	server::getPort() const
 bool	server::isTaken(message& msg)
 {
 	if (msg.getParams()[0] == "USER")
-		for (size_t i = 0; i < _clients.size(); i++)
+	{
+		for (std::list<client>::iterator i = _clients.begin(); i != _clients.end(); ++i)
 		{
-			if (msg.getParams()[0] == _clients[i].getUser())
-
+			if (msg.getParams()[0] == i->getUser())
 				return true;
 		}
-		
+	}
 	else if (msg.getParams()[0] == "NICK")
 	{
-		for (size_t i = 0; i < _clients.size(); i++)
+		for (std::list<client>::iterator i = _clients.begin(); i != _clients.end(); ++i)
 		{
-			if (msg.getParams()[0] == _clients[i].getNick())
+			if (msg.getParams()[0] == i->getNick())
 				return true;
 		}
 	}
@@ -210,19 +253,55 @@ bool	server::handleJoin(client* cli, message& msg)
 		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false;
 	}
+	if (params.size() > 2)
+	{
+		std::string	error = "\r\n";
+		polloutActivate(cli);
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}
 	// check if "join 0" = leave all channels;
 	if (params[0] == "0" && params.size() == 1) {
-		//client must leave all channels
+		//remove client from all channels' client lists
+		for (std::map<std::string, channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it) 
+		{
+			it->second.getClientList().remove(*cli);
+			it->second.getOpList().remove(*cli);
+		}
+		//clear client chan list
+		cli->getChannelList().clear();
 		//server send msg to client saying he left them all
+		//...
 		return (true);
 	}
 	//avec une commande /join #chan1,#chan2 key1,key2 
-	//boucler sur param
-		//subdiviser en deux vect chanName, pwd
-	//parcourir le vect chanName
+	//subdiviser params en deux vect chanName, pwd
+	std::vector<std::string> chanGiven;
+	chanGiven.clear();
+	std::vector<std::string> keysGiven;
+	keysGiven.clear();
+	std::stringstream ss(params[0]);
+	std::string item;
+	while (std::getline(ss, item, ','))
+		chanGiven.push_back(item);
+	if (params.size() == 2)
+	{
+		std::string item2;
+		std::stringstream ss2(params[1]);
+		while (std::getline(ss2, item2, ','))
+			keysGiven.push_back(item2);
+	}
+	if (params.size() > chanGiven.size() + keysGiven.size())
+	{
+		std::string	error = "\r\n";
+		polloutActivate(cli);
+		send(cli->getFd(), error.c_str(), error.length(), 0);
+		return false;
+	}
+	for (size_t i = 0; i < chanGiven.size(); ++i)
 	{
 		// check if channel name starts with # or & 
-		if (params[0][0] != '#' && params[0][0] != '&' && params[0][0] != '+')
+		if (chanGiven.empty()) // le channel doit commencer par # & ou +
 		{
 			std::string	error = "\r\n";
 			polloutActivate(cli);
@@ -230,16 +309,16 @@ bool	server::handleJoin(client* cli, message& msg)
 			return false;
 		}
 		//search for channel name 
-		std::map<std::string, channel>::iterator itChan = this->_channels.find(msg.getParams()[0]);
+		std::map<std::string, channel>::iterator itChan = this->_channels.find(chanGiven[i]);
 		if (itChan == this->_channels.end())
 		{
 			//create the channel if itChan doesn't exist
 			//add the client to the channel's client list (channel constructor)
-			channel newChannel(params[0], *cli);
+			channel newChannel(chanGiven[i], *cli);
 			//add new channel to the server's channel map
-			this->_channels[params[0]] = newChannel;
+			this->_channels[chanGiven[i]] = newChannel;
 			//add the channel to the client's channel list
-			cli->getChannelList().push_back(params[0]);
+			cli->getChannelList().push_back(chanGiven[i]);
 		}
 		else
 		{
@@ -259,7 +338,7 @@ bool	server::handleJoin(client* cli, message& msg)
 			//check if theres a channel key/password
 			if (!itChan->second.getKey().empty())
 			{
-				if (std::find(params.begin(), params.end(), itChan->second.getKey()) == params.end())
+				if (keysGiven.empty() || itChan->second.getKey().compare(keysGiven[i]) != 0)
 				{
 					std::string	error = "\r\n";
 					polloutActivate(cli);
@@ -278,15 +357,18 @@ bool	server::handleJoin(client* cli, message& msg)
 					return false;
 				}
 			}
+			// if client got invited, remove him from the invited list
+			if (!itChan->second.getInvitedList().empty())
+				itChan->second.getInvitedList().remove(*cli);
 			//add the channel to the client's channel list
 			cli->getChannelList().push_back(params[0]);
 			//add the client to the channel's client list
 			itChan->second.getClientList().push_back(*cli);
 		}		
 		//send the appropriate message to the client 
-		//
+		//...
 		//send the appropriate message to the channel members
-		//
+		//...
 	}
 	return (true);	
 }
@@ -557,6 +639,26 @@ void		initStopSignal(void) {
 
 /*---------------------------------------*/
 
+/*----------HELPER FUNCTIONS-------------*/
+
+std::list<client>::iterator 		findClientByFd(std::list<client>& clients, int fd) 
+{
+    for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
+        if (it->getFd() == fd) 
+            return it;
+    }
+    return clients.end();
+}
+
+void 								closeAllFds(std::vector<struct pollfd>& fds) 
+{
+	for (std::vector<struct pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
+		close(it->fd);
+	return ;
+}
+
+/*---------------------------------------*/
+
 /*----------PROGRAMME-------------*/
 
 void server::run()
@@ -567,31 +669,46 @@ void server::run()
 	pollingRequestServ.revents = 0;
     this->_fds.push_back(pollingRequestServ);
 
-    std::vector<int> toRemove; // pour supprimer les clients
-    std::vector<int> toAdd;    // pour ajouter les clients
+    std::list<int> toRemove; // pour supprimer les clients
+    std::list<int> toAdd;   // pour ajouter les clients
 
     while (true)
 	{
 		if (stopSignal)
 		{
-			//close tous les fd tout clean etc.
-			break;
+			//close tous les fds
+			closeAllFds(this->_fds);
+			return ;
 		}
-        int fdReady = poll(&this->_fds[0], this->_fds.size(), 100);
+        int fdReady = poll(&pollingRequestServ, this->_fds.size(), 100);
         if (fdReady == -1 && errno != EINTR)
 		{
 			std::cerr << "Erreur poll():" << strerror(errno) << std::endl;
-            // close all fds ?
-            // free qqc?
-            break; // exit() au lieu de break; ?
+            // close all fds
+			closeAllFds(this->_fds);
+			return;
         }
         if (fdReady <= 0)
 			continue;
-        for (size_t i = 0; i < this->_fds.size(); i++)
+		for (std::vector<pollfd>::iterator itPollFd = this->_fds.begin(); itPollFd != this->_fds.end(); ++itPollFd)
 		{
-            if (this->_fds[i].revents && POLLIN)
+			std::list<client>::iterator itClient = findClientByFd(this->_clients, itPollFd->fd); // trouve le client a partir du fd dans la liste des clients sinon retourne .end()
+			if (itPollFd->revents & (POLLERR | POLLHUP | POLLNVAL))
+    		{
+				if (itPollFd == this->_fds.begin()) // erreur sur le socket serv
+				{
+					std::cerr << "Erreur sur le socket serveur, arret du serveur." << std::endl;
+					//close tous les fds
+					closeAllFds(this->_fds);
+					return;
+				}
+				std::cerr << "Erreur sur le socket client fd=" << itPollFd->fd << ", deconnexion." << std::endl;
+        		toRemove.push_back(itPollFd->fd);
+        		continue ;
+    		}
+			if (itPollFd->revents & POLLIN)
 			{
-                if (i == 0) // signal sur socket serv = nouvelle(s) connexion(s) client
+                if (itPollFd == this->_fds.begin()) // signal sur socket serv = nouvelle(s) connexion(s) client
 				{
 					while (true) // en 'rafale'
 					{
@@ -627,45 +744,45 @@ void server::run()
                 }
                 else
 				{ // signal sur un socket client
-                    std::cout << "Message du client fd=" << this->_fds[i].fd << std::endl;
+                    std::cout << "Message du client fd=" << itPollFd->fd << std::endl;
                     char buffer[513];
                     int ret;
                     do
 					{
-                        ret = recv(this->_fds[i].fd, buffer, sizeof(buffer) - 1, 0);
+                        ret = recv(itPollFd->fd, buffer, sizeof(buffer) - 1, 0);
                     } while (ret == -1 && errno == EINTR);
                     switch (ret)
 					{
                         case (0): // déconnexion client
-                            std::cout << "Client déconnecté fd=" << this->_fds[i].fd << std::endl;
-                            toRemove.push_back(i);
+                            std::cout << "Client déconnecté fd=" << itPollFd->fd << std::endl;
+                            toRemove.push_back(itPollFd->fd);
                             break;
                         case (-1): // erreur recv
                             std::cerr << "Erreur recv() : " << strerror(errno) << std::endl;
-                            toRemove.push_back(i); // t sur ? -> oui je crois, c'est le i du fd qui ici i != 0 jamais donc sur que c'est pas server on on supp le bon cli
+                            toRemove.push_back(itPollFd->fd);
                             break;
                         default: // message
                             buffer[ret] = '\0';
                             //si le parsing est bon
                             std::string fragment(buffer);
                             if (!fragment.find("\r\n"))
-                            	this->_clients[i - 1].getFullMessage().append(" " + fragment);
+                            	itClient->getFullMessage().append(" " + fragment);
                             else
 							{
-                            	if (parsing(&this->_clients[i - 1], this->_clients[i - 1].getFullMessage()))
+                            	if (parsing(&(*itClient), itClient->getFullMessage()))
 								{
 									//on recup le message parser
-									message	msg = this->_clients[i - 1].getMessage();
+									message	msg = itClient->getMessage();
 									std::string	cmdName = msg.getCommand();
 
 									//verif d'auth
 									bool	needsAuth = true;
 									if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
 										needsAuth = false;
-									if (needsAuth && !this->_clients[i - 1].getRegistered())
+									if (needsAuth && !itClient->getRegistered())
 									{
 										std::string	error = ":server 451 * :Vous n'etes pas enregistre\r\n";
-										send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
+										send(itClient->getFd(), error.c_str(), error.length(), 0);
 										msg.clearMessage();
 										break;
 									}
@@ -674,16 +791,16 @@ void server::run()
 									if (this->_cmdList.find(cmdName) != this->_cmdList.end())
 									{
 										bool	res;
-										res = (this->*_cmdList[cmdName])(&this->_clients[i - 1], msg);
+										res = (this->*_cmdList[cmdName])(&(*itClient), msg);
 										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
-										toRemove.push_back(i);
+										toRemove.push_back(itPollFd->fd);
 									}
 									else
 									{
-										std::string	error = ":server 421 " + this->_clients[i - 1].getNick() + " " + cmdName + " :Commande inconnue\r\n";
-										send(this->_clients[i - 1].getFd(), error.c_str(), error.length(), 0);
+										std::string	error = ":server 421 " + itClient->getNick() + " " + cmdName + " :Commande inconnue\r\n";
+										send(itClient->getFd(), error.c_str(), error.length(), 0);
 									}
-
+									itClient->getFullMessage().clear();
 									msg.clearMessage();
 								}
                             }
@@ -691,37 +808,35 @@ void server::run()
                     }
                 }
             }
-        }
-		// POLLOUT & send
-		for (size_t i = 0; i < this->_fds.size(); i++)
-		{
-            if (!(this->_fds[i].revents & POLLOUT))
-				continue;
-			client& c = this->_clients[i - 1];
-			while (c.hasPending()){
-				const char* base = c.getOutbuf().data() + c.getBytesSent();
-				size_t left = c.getOutbuf().size() - c.getBytesSent();
+			// POLLOUT & send
+			if (itClient != this->_clients.end() && itPollFd->revents & POLLOUT) 
+			{
+				while (itClient->hasPending())
+				{
+					const char* base = itClient->getOutbuf().data() + itClient->getBytesSent();
+					size_t left = itClient->getOutbuf().size() - itClient->getBytesSent();
 
-				size_t n = send(this->_fds[i].fd, base, left, 0);
-				if (n > 0){
-					c.setBytesSent(c.getBytesSent() + n);
-					c.clearIfFlushed();
-					if (!(c.hasPending())) {
-						this->_fds[i].events &= ~POLLOUT;
+					size_t n = send(itPollFd->fd, base, left, 0);
+					if (n > 0)
+					{
+						itClient->setBytesSent(itClient->getBytesSent() + n);
+						itClient->clearIfFlushed();
+						if (!(itClient->hasPending())) 
+							itPollFd->events &= ~POLLOUT;
+					}
+					else 
+					{
+						if (n < 0 && (errno != EAGAIN && errno != EWOULDBLOCK))
+							toRemove.push_back(itPollFd->fd); // mieux gerer cette erreur
+						break;
 					}
 				}
-				else {
-					if (n < 0 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
-						toRemove.push_back(i); // mieux gerer cette erreur
-					}
-				}
-				break;
 			}
-		}
+        }
         // Ajouter les nouveaux clients dans _fds et _clients
         if (!toAdd.empty())
 		{
-            for (std::vector<int>::iterator it = toAdd.begin(); it != toAdd.end(); ++it)
+            for (std::list<int>::iterator it = toAdd.begin(); it != toAdd.end(); ++it)
 			{
                 int clientFd = *it;
                 struct pollfd pollingRequestClient;
@@ -733,14 +848,25 @@ void server::run()
             }
             toAdd.clear();
         }
-        // Supprimer les clients
         if (!toRemove.empty()) {
-            for (std::vector<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it)
+            for (std::list<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it) // liste de fd a supprimer
 			{
-                int idx = *it;
-                close(this->_fds[idx].fd);
-                this->_fds.erase(this->_fds.begin() + idx);
-                this->_clients.erase(this->_clients.begin() + (idx - 1));
+                int fd = *it;
+                close(fd);
+                // supprimer le pollfd correspondant
+				for (std::vector<struct pollfd>::iterator pfIt = this->_fds.begin(); pfIt != this->_fds.end(); ++pfIt) {
+					if (pfIt->fd == fd) {
+						this->_fds.erase(pfIt);
+						break;
+					}
+				}
+                // supprimer le client correspondant
+				for (std::list<client>::iterator cIt = this->_clients.begin(); cIt != this->_clients.end(); ++cIt) {
+					if (cIt->getFd() == fd) {
+						this->_clients.erase(cIt);
+						break;
+					}
+				}
             }
             toRemove.clear();
         }
