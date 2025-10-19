@@ -1,20 +1,13 @@
 
 #include "channel.hpp"
 
-channel::channel(void) {
-	this->_name = "";
-	this->_clientsList.clear();
-	this->_topicStatus = false;
-	this->_topic = "";
-	this->_limit = -1;
-	this->_inviteOnly = false;
-	this->_invitedList.clear();
-	this->_key = "";
-	this->_operatorsList.clear();
+channel::channel(void) 
+{
 	return;
 }
 
-channel::channel(std::string name, client creator) {
+channel::channel(std::string name, client creator) 
+{
 	this->_name = name;
 	this->_clientsList.push_back(creator);
 	this->_topicStatus = false;
@@ -27,12 +20,14 @@ channel::channel(std::string name, client creator) {
 	return;
 }
 
-channel::channel(channel const & copy) {
+channel::channel(channel const & copy) 
+{
 	*this = copy;
 	return;
 }
 
-channel& 		channel::operator=(channel const & rhs) {
+channel& 		channel::operator=(channel const & rhs) 
+{
 	if (this != &rhs) {
 		this->_name = rhs.getChannelName();
 		this->_clientsList = rhs.getClientList();
@@ -47,65 +42,98 @@ channel& 		channel::operator=(channel const & rhs) {
 	return (*this);
 }
 
-channel::~channel(void) {
+channel::~channel(void) 
+{
 	return;
 }
 
-std::string				channel::getChannelName(void) const {
+std::string				channel::getChannelName(void) const 
+{
 	return (this->_name);
 }
 
-void					channel::setChannelName(std::string newName) {
+void					channel::setChannelName(std::string newName) 
+{
 	this->_name = newName;
 	return ;
 }
 
-std::list<client>		channel::getClientList(void) const {
+std::list<client>&		channel::getClientList(void) 
+{
 	return (this->_clientsList);
 }
 
-bool					channel::isRestrictedTopic(void) const {
+std::list<client> 		channel::getClientList(void) const 
+{
+	return (this->_clientsList);
+}
+
+bool					channel::isRestrictedTopic(void) const 
+{
 	return (this->_topicStatus);
 }
 
-void					channel::setRestrictedTopic(bool newStatus) {
+void					channel::setRestrictedTopic(bool newStatus) 
+{
 	this->_topicStatus = newStatus;
 }
 
-std::string				channel::getTopic(void) const {
+std::string				channel::getTopic(void) const 
+{
 	return (this->_topic);
 }
 
-void					channel::setTopic(std::string newTopic) {
+void					channel::setTopic(std::string newTopic) 
+{
 	this->_topic = newTopic;
 }
 
-int						channel::getLimit(void) const {
+int						channel::getLimit(void) const 
+{
 	return (this->_limit);
 }
-void					channel::setLimit(int newLimit) {
+void					channel::setLimit(int newLimit) 
+{
 	this->_limit = newLimit;
 }
-bool					channel::isInviteOnly(void) const {
+
+bool					channel::isInviteOnly(void) const 
+{
 	return (this->_inviteOnly);
 
 }
-void					channel::setInviteOnly(bool newStatus) {
+
+void					channel::setInviteOnly(bool newStatus) 
+{
 	this->_inviteOnly = newStatus;
 }
 
-std::list<client>		channel::getInvitedList(void) const {
+std::list<client>&		channel::getInvitedList(void) 
+{
 	return (this->_invitedList);
 }
 
-std::string				channel::getKey(void) const {
+std::list<client> 		channel::getInvitedList(void) const 
+{
+	return (this->_invitedList);
+}
+
+std::string				channel::getKey(void) const 
+{
 	return (this->_key);
 }
 
-void					channel::setKey(std::string newKey) {
+void					channel::setKey(std::string newKey) 
+{
 	this->_key = newKey;	
 }
 
-std::list<client>		channel::getOpList(void) const {
+std::list<client>&		channel::getOpList(void) 
+{
+	return (this->_operatorsList);
+}
+
+std::list<client> 		channel::getOpList(void) const 
+{
 	return (this->_operatorsList);
 }
