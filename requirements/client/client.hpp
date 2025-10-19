@@ -2,7 +2,7 @@
 #define CLIENT_HPP
 
 #include <iostream>
-#include <vector>
+#include <list>
 #include <time.h>
 #include "../message/message.hpp"
 
@@ -23,7 +23,7 @@ class client
 		std::string					_pass;
 		std::string					_outbuf;
 		size_t						_bytesSent;
-		std::vector<std::string> 	_channels;
+		std::list<std::string> 		_channels;
 
 		client();
 
@@ -49,7 +49,7 @@ class client
 		void						setReal(std::string name);
 		std::string					getPass(void) const;
 		void						setPass(std::string name);
-		std::vector<std::string>	getChannel(void) const;
+		std::list<std::string>		getChannelList(void) const;
 		void						enqueueLine(const std::string& ircLine); // ajoute une ligne a la file d attente
 		bool 						hasPending() const;                      // reste-t-il des octets à envoyer ?
     	void 						clearIfFlushed();                        // si tout envoyé -> vider && reset bytesSent
@@ -59,6 +59,9 @@ class client
     	size_t& 					getBytesSent();
 		void 						setBytesSent(size_t value);
 		double						getTime() const;
+
+		bool						operator==(client & const rhs);
+		bool						operator!=(client & const rhs);
 };
 
 #endif

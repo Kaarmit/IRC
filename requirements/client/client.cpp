@@ -84,7 +84,7 @@ void						client::setPass(std::string name)
 	this->_pass = name;
 }
 
-std::vector<std::string>	client::getChannel(void) const {
+std::list<std::string>	client::getChannelList(void) const {
 	return (this->_channels);
 }
 
@@ -126,4 +126,14 @@ void client::setBytesSent(size_t value) {
 double	client::getTime() const
 {
 	return this->_connexionTime;
+}
+
+bool						client::operator==(client & const rhs) {
+	if (this == &rhs || this->_fd == rhs.getFd())
+		return (true);
+	return (false);
+}
+
+bool						client::operator!=(client & const rhs) {
+	return (!(*this == rhs));
 }
