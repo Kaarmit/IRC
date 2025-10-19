@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/07 14:47:06 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/07 16:23:08 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/19 17:15:04 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,20 +14,47 @@
 #define CHANNEL_HPP
 
 #include <iostream>
-#include <vector>
+#include <list>
 
 #include "../client/client.hpp"
 
 class channel
 {
 	private:
-		std::string	_name;
-		std::vector<client*>	_clients;
-		client*	_operateur;
+		std::string				_name;
+		std::list<client>		_clientsList;
+		bool					_topicStatus;
+		std::string				_topic;
+		int						_limit;
+		bool					_inviteOnly;
+		std::list<client>		_invitedList;
+		std::string				_key;
+		std::list<client>		_operatorsList;
+		channel(void);
 
 	public:
-		channel();
-		~channel();
+
+		channel(std::string name, client creator);
+		channel(channel const & copy);
+		channel& 		operator=(channel const & rhs);
+		~channel(void);
+
+		std::string				getChannelName(void) const;
+		void					setChannelName(std::string newName);
+		std::list<client>		getClientList(void) const;
+		bool					isRestrictedTopic(void) const;
+		void					setRestrictedTopic(bool newStatus);
+		std::string				getTopic(void) const;
+		void					setTopic(std::string newTopic);
+		int						getLimit(void) const;
+		void					setLimit(int newLimit);
+		bool					isInviteOnly(void) const;
+		void					setInviteOnly(bool newStatus);
+		std::list<client>		getInvitedList(void) const;
+		std::string				getKey(void) const;
+		void					setKey(std::string newKey);
+		std::list<client>		getOpList(void) const;			
+	
 };
 
 
