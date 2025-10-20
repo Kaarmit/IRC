@@ -60,8 +60,8 @@ class channel
 		std::list<client>&		getOpList(void);
 		std::list<client>		getOpList(void) const;
 
-		bool						operator==(channel & const rhs);
-		bool						operator!=(channel & const rhs);
+		bool						operator==(channel& rhs);
+		bool						operator!=(channel& rhs);
 
 		bool					isMember(client* cli) const;
 

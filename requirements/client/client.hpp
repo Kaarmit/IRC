@@ -65,8 +65,8 @@ class client
 		void 						setBytesSent(size_t value);
 		double						getTime() const;
 
-		bool						operator==(client & const rhs);
-		bool						operator!=(client & const rhs);
+		bool						operator==(client& rhs);
+		bool						operator!=(client& rhs);
 };
 
 #endif

@@ -151,6 +151,12 @@ static bool isValidNick(const std::string& s)
     return true;
 }
 
+static bool isSpecialUser(char c)
+{
+	(void)c;
+	return true;
+}
+
 static bool isValidUsername(const std::string& s)
 {
 	if (s.empty())
@@ -159,7 +165,7 @@ static bool isValidUsername(const std::string& s)
 		return false;
 	for (size_t i = 0; i < s.size(); i++)
 	{
-		if(!isSpecialUser(s[i]) &&  !isalnum(s[i])) //creer isspecialUser()
+		if(!isSpecialUser(s[i]) &&  !isalnum(s[i])) //creer isspecialUser() juste au dessus
 			return false;
 	}
 	return true;
@@ -592,6 +598,8 @@ bool	server::handleJoin(client* cli, message& msg)
 //PART
 bool	server::handlePart(client* cli, message& msg)
 {
+	(void)cli; (void)msg;
+	return true;
 }
 
 //PRIVMSG
@@ -696,22 +704,32 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 //KICK
 bool	server::handleKick(client* cli, message& msg)
 {
+	(void)cli; (void)msg;
+	return true;
 }
 //INVITE
 bool	server::handleInvite(client* cli, message& msg)
 {
+	(void)cli; (void)msg;
+	return true;
 }
 //TOPIC
 bool	server::handleTopic(client* cli, message& msg)
 {
+	(void)cli; (void)msg;
+	return true;
 }
 //MODE
 bool	server::handleMode(client* cli, message& msg)
 {
+	(void)cli; (void)msg;
+	return true;
 }
 //PING (optionnel)
 bool	server::handlePing(client* cli, message& msg)
 {
+	(void)cli; (void)msg;
+	return true;
 }
 //QUIT
 bool	server::handleQuit(client* cli, message& msg)
@@ -723,10 +741,14 @@ bool	server::handleQuit(client* cli, message& msg)
 	// cli->channelList().remove(it);
 	//verifier si ct le dernier client du channel, si oui enlever le channel de la liste de chan serv
 	//deco le client du server
+	(void)cli; (void)msg;
+	return true;
 }
 //WHO(optionnel)
 bool	server::handleWho(client* cli, message& msg)
 {
+	(void)cli; (void)msg;
+	return true;
 }
 
 void	server::initCmdServer()
@@ -734,7 +756,6 @@ void	server::initCmdServer()
 	this->_cmdList["PASS"] = &server::handlePass;
 	this->_cmdList["NICK"] = &server::handleNick;
 	this->_cmdList["USER"] = &server::handleUser;
-
 }
 
 /*-------------------------------------------------*/
@@ -949,7 +970,7 @@ void		signalHandling(int signum) {
 	return;
 }
 
-void		initStopSignal(void) {
+void	server::initStopSignal(void) {
 	struct sigaction sa;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;

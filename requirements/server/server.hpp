@@ -71,6 +71,10 @@ class server
 
 		void	initCmdServer();
 
+		/*signaux*/
+		void	initStopSignal(void);
+		/*-------*/
+
 		server(void);
 
 	public:
