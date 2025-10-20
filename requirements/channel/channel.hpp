@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/07 14:47:06 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/20 17:40:26 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/10/20 17:58:45 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ class channel
 
 		channel(std::string name, client& creator);
 		channel(channel const & copy);
-		channel& 		operator=(channel const & rhs);
+		channel& 				operator=(channel const & rhs);
 		~channel(void);
 
 		std::string				getChannelName(void) const;
