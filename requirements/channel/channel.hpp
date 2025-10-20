@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/07 14:47:06 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/20 13:53:12 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/10/20 17:40:26 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,8 @@ class channel
 		std::list<client>		_clientsList;
 		bool					_topicStatus;
 		std::string				_topic;
+		client&					_topicWho;
+		time_t					_topicTimeStamp;
 		int						_limit;
 		bool					_inviteOnly;
 		std::list<client>		_invitedList;
@@ -34,7 +36,7 @@ class channel
 
 	public:
 
-		channel(std::string name, client creator);
+		channel(std::string name, client& creator);
 		channel(channel const & copy);
 		channel& 		operator=(channel const & rhs);
 		~channel(void);
@@ -47,6 +49,10 @@ class channel
 		void					setRestrictedTopic(bool newStatus);
 		std::string				getTopic(void) const;
 		void					setTopic(std::string newTopic);
+		client					getTopicAuthor(void) const;
+		void					setTopicAuthor(client& newAuthor);
+		time_t					getTopicTimestamp(void) const;
+		void					setTopicTimestamp(void);
 		int						getLimit(void) const;
 		void					setLimit(int newLimit);
 		bool					isInviteOnly(void) const;
