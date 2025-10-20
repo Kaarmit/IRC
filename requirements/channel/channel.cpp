@@ -106,7 +106,7 @@ time_t					channel::getTopicTimestamp(void) const
 	return (this->_topicTimeStamp);
 }
 
-std::string				channel::getTopicTimestampStr(void) const 
+std::string				channel::getTopicTimestampStr(void) const
 {
 	std::ostringstream oss;
     oss << this->_topicTimeStamp;
@@ -168,14 +168,14 @@ std::list<client> 		channel::getOpList(void) const
 	return (this->_operatorsList);
 }
 
-bool					channel::operator==(channel & const rhs)
+bool					channel::operator==(channel& rhs)
 {
 	if (this == &rhs || this->_name == rhs.getChannelName())
 		return (true);
 	return (false);
 }
 
-bool					channel::operator!=(channel & const rhs)
+bool					channel::operator!=(channel& rhs)
 {
 	return (!(*this == rhs));
 }

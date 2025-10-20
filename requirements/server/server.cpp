@@ -218,6 +218,10 @@ static std::string userPrefix(const client* c)
 // Broadcast NICK (à soi + tous les clients partageant un canal)
 void server::broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick)
 {
+
+	//Daryl: juste pour faire un test de make sorry
+	(void)oldNick;
+
     // Prépare la ligne NICK
     const std::string line = userPrefix(cli) + " NICK :" + newNick + "\r\n";
 
@@ -243,14 +247,14 @@ void server::broadcastJoin(client* cli, channel& chan)
 {
 	std::list<client> chanCL = chan.getClientList();
 	std::string line;
-    for (std::list<client>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan) 
+    for (std::list<client>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan)
 	{
 		polloutActivate(&(*itChan));
 		line = userPrefix(cli) + " JOIN :" + chan.getChannelName() + "\r\n";
 		itChan->enqueueLine(line);
-        if (itChan->getFd() == cli->getFd()) 
+        if (itChan->getFd() == cli->getFd())
 		{
-			if (!chan.getTopic().empty()) 
+			if (!chan.getTopic().empty())
 			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
 				cli->enqueueLine(line);
@@ -584,7 +588,7 @@ bool	server::handleJoin(client* cli, message& msg)
 				//check if theres a limit
 				if (itChan->getLimit() != -1)
 				{
-					if (itChan->getLimit() <= itChan->getClientList().size())
+					if (static_cast<size_t>(itChan->getLimit()) <= itChan->getClientList().size())
 					{
 						polloutActivate(cli);
         				std::string line = ":" + this->_serverName + " 471 " + cli->getNick() + " " + chanGiven[i] + " :Channel is full\r\n";
@@ -767,6 +771,8 @@ void	server::initCmdServer()
 	this->_cmdList["PASS"] = &server::handlePass;
 	this->_cmdList["NICK"] = &server::handleNick;
 	this->_cmdList["USER"] = &server::handleUser;
+	this->_cmdList["JOIN"] = &server::handleJoin;
+	this->_cmdList["PRIVMSG"] = &server::handlePrivmsg;
 }
 
 /*-------------------------------------------------*/
@@ -892,7 +898,7 @@ bool	checkServName(std::string name) {
 	return (true);
 }
 
-bool	checkIdentity(client* c, std::string prefix) {
+bool	checkIdentity(client* c) {
 	std::string	prfx = c->getMessage().getPrefix();
 	if (!prfx.empty()) {
 		std::size_t userIndex = prfx.find_first_of('!');
@@ -950,7 +956,7 @@ bool	parsing(client* c, std::string rawMsg) {
 	if (rawMsg[0] == ':') {
 		ss >> prfx;
 		c->getMessage().setPrefix(prfx);
-		if (!checkIdentity(c, prfx))
+		if (!checkIdentity(c))
 			return (false);
 	}
 	ss >> cmd;
