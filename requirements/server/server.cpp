@@ -235,37 +235,40 @@ bool	server::handlePass(client* cli, message& msg)
 	//verif si cli deja enregistrer
 	if (cli->getRegistered())
 	{
-		std::string	error = ":server 462 " + cli->getNick() + " :You may not register\r\n";
-		send(cli->getFd(), error.c_str(), error.length(), 0);
+		std::string	error = ":" + this->_serverName + " 462 " + cli->getNick() + " :You may not register\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
 		return false;
 	}
 
 	//verif si NICK ou USER a ete envoye avant pass
 	if (!cli->getNick().empty() || !cli->getUser().empty())
 	{
-		std::string	error = ":server 462 * :PASS must be sent before NICK/USER \r\n";
+		std::string	error = ":" + this->_serverName + " 462 * :PASS must be sent before NICK/USER \r\n";
+		cli->enqueueLine(error);
 		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false;
 	}
 	//verif si on a tout les params dans PASS
 	if(msg.getParams().empty())
 	{
-		std::string	error = ":server 461 * :Not enough parameters\r\n";
+		std::string	error = ":" + this->_serverName + " 461 * :Not enough parameters\r\n";
+		cli->enqueueLine(error);
 		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false;
 	}
 	//verif du mdp
 	if (msg.getParams()[0] != this->getPassWord())
 	{
-		std::string	error = ":server 464 * :Password incorrect\r\n";
+		std::string	error = ":" + this->_serverName + " 464 * :Password incorrect\r\n";
+		cli->enqueueLine(error);
 		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false;
 	}
 	//si tout opk, on set le pass a true ou return true
 	cli->setPass(msg.getParams()[0]);
+	std::string passSet = ":" + this->_serverName + " User password has been set\r\n";
+	cli->enqueueLine(passSet);
 	return true;
 }
 
