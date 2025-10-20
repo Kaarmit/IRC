@@ -39,10 +39,13 @@ class server
 		char*														_port;
 
 		/*Utils*/
-		void 	broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick);
-		void 	sendWelcomeIfRegistrationComplete(client* cli);
 		void	polloutActivate(client* cli);
+		
 		bool	isNickTaken(const std::string& nick);
+		void 	sendWelcomeIfRegistrationComplete(client* cli);
+		void 	broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick);
+		
+		void	broadcastJoin(client* cli, channel& chan);
 		/*---*/
 		
 		/*cmd*/
