@@ -34,9 +34,17 @@ class server
 		std::map<std::string, channel>								_channels;
 		std::map<std::string, bool (server::*)(client*, message&)>	_cmdList;
 		std::string													_passWord;
+		std::string													_serverName;
 		int															_serverFd;
 		char*														_port;
 
+		/*Utils*/
+		void 	broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick);
+		void 	sendWelcomeIfRegistrationComplete(client* cli);
+		void	polloutActivate(client* cli);
+		bool	isNickTaken(const std::string& nick);
+		/*---*/
+		
 		/*cmd*/
 		bool	handlePass(client* cli, message& msg);
 		bool	handleNick(client* cli, message& msg);
@@ -53,8 +61,7 @@ class server
 		bool	handleWho(client* cli, message& msg);
 		/*---*/
 
-		bool	isTaken(message& msg);
-		void	polloutActivate(client* cli);
+
 		void	initCmdServer();
 
 		server(void);
