@@ -157,8 +157,14 @@ static bool sharesAChannelByFd(const client* a, const client* b,
 // Construit un prefix utilisateur : nick!user@host
 static std::string userPrefix(const client* c) 
 {
-	
-    return c->getNick() + "!" + c->getUser() + "@" + c->getHost();
+	std::string prefix;
+	if (!(c->getNick().empty())) 
+		prefix.append(":" + c->getNick());
+	if (!(c->getUser().empty())) 
+		prefix.append("!" + c->getUser());
+	if (!(c->getHost().empty())) 
+		prefix.append("@" + c->getHost());
+    return (prefix);
 }
 
 // Broadcast NICK (à soi + tous les clients partageant un canal)
