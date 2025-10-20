@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   channel.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aisha <aisha@student.42.fr>                +#+  +:+       +#+        */
+/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/07 14:47:06 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/19 21:47:24 by aisha            ###   ########.fr       */
+/*   Updated: 2025/10/20 13:53:12 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,9 @@ class channel
 		void					setKey(std::string newKey);
 		std::list<client>&		getOpList(void);
 		std::list<client>		getOpList(void) const;
+
+		bool						operator==(channel & const rhs);
+		bool						operator!=(channel & const rhs);					
 
 };
 

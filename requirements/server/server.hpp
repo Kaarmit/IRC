@@ -31,7 +31,7 @@ class server
 	private:
 		std::vector<struct pollfd>									_fds;
 		std::list<client>											_clients;
-		std::map<std::string, channel>								_channels;
+		std::list<channel>											_channels;
 		std::map<std::string, bool (server::*)(client*, message&)>	_cmdList;
 		std::string													_passWord;
 		std::string													_serverName;
@@ -80,8 +80,8 @@ class server
 		std::vector<struct pollfd>&		getFds();		
 		std::list<client>				getClients() const;
 		std::list<client>&				getClients();
-		std::map<std::string, channel>	getChannels() const;
-		std::map<std::string, channel>&	getChannels();
+		std::list<channel>				getChannels() const;
+		std::list<channel>&				getChannels();
 		int								getServerFd() const;
 		std::string						getPassWord() const;
 		char*							getPort() const;
