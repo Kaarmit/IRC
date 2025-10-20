@@ -187,7 +187,7 @@ bool	server::handleNick(client* cli, message& msg)
 
 	if(isTaken(msg))
 	{
-		std::string error = ":server 433 * :Nickname is already in use\r\n";
+		std::string error = ":server 432 * :Nickname is already in use\r\n";
 		polloutActivate(cli);
 		send(cli->getFd(), error.c_str(), error.length(), 0);
 		return false; 
