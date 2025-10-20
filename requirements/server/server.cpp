@@ -1,10 +1,9 @@
-
 #include "server.hpp"
 
 volatile sig_atomic_t		stopSignal;
 
 /*---------CONSTRUCTOR/DESTRUCTOR-----------*/
-server::server(void)
+server::server(void) : _serverName("myIRCserver")
 {
 }
 
@@ -95,31 +94,128 @@ char*	server::getPort() const
 }
 
 /*-------------------------*/
+ /*-------------------UTILS------------------------*/
+ 
+static bool isSpecial(char c) 
+{
+    // RFC: specials = []\`_^{}|
+    return c=='[' || c==']' || c=='\\' || c=='`' || c=='_' || c=='^' || c=='{' || c=='}' || c=='|';
+}
+static bool isNickFirst(char c) 
+{
+    return isalpha(c) || isSpecial(c);
+}
+static bool isNickRest(char c) 
+{
+    return isalpha(c) || isdigit(c) || isSpecial(c) || c=='-';
+}
 
+static bool isValidNick(const std::string& s) 
+{
+    if (s.empty()) 
+		return false;
+    if (!isNickFirst(s[0])) 
+		return false;
+    for (size_t i = 1; i < s.size(); ++i)
+	{
+        if (!isNickRest(s[i])) 
+			return false;
+	}
+    return true;
+}
+
+static bool channelHasFd(const channel& ch, int fd) 
+{
+    std::list<client> lst = ch.getClientList(); 
+    for (std::list<client>::const_iterator it = lst.begin(); it != lst.end(); ++it)
+	{
+        if (it->getFd() == fd) 
+			return true;
+    }
+    return false;
+}
+
+// Partagent-ils au moins un channel ? (version map<string, channel>)
+static bool sharesAChannelByFd(const client* a, const client* b,
+                               const std::map<std::string, channel>& channels)
+{
+    if (!a || !b) return false;
+    const int fda = a->getFd();
+    const int fdb = b->getFd();
+    if (fda == fdb) return true; // même client, cas trivial
+
+    for (std::map<std::string, channel>::const_iterator it = channels.begin();
+         it != channels.end(); ++it)
+    {
+        const channel& ch = it->second;
+        if (channelHasFd(ch, fda) && channelHasFd(ch, fdb))
+            return true;
+    }
+    return false;
+}
+
+// Construit un prefix utilisateur : nick!user@host
+static std::string userPrefix(const client* c) 
+{
+    return c->getNick() + "!" + c->getUser() + "@" + c->getHost();
+}
+
+// Broadcast NICK (à soi + tous les clients partageant un canal)
+void server::broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick)
+{
+    // Prépare la ligne NICK
+    const std::string line = ":" + userPrefix(cli) + " NICK :" + newNick + "\r\n";
+
+    // À soi
+    cli->enqueueLine(line);
+    polloutActivate(cli);
+
+    // À tous les autres clients qui partagent au moins un channel
+    for (std::list<client>::iterator it = _clients.begin(); it != _clients.end(); ++it) 
+	{
+        client& other = *it;
+        if (other.getFd() == cli->getFd())
+            continue;
+        if (sharesAChannelByFd(cli, &other, _channels)) 
+		{
+            other.enqueueLine(line);
+            polloutActivate(&other);
+        }
+    }
+}
+
+
+// Envoi 001 à l’enregistrement
+void server::sendWelcomeIfRegistrationComplete(client* cli) 
+{
+    if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty()) 
+    {
+        cli->setRegistered(true);
+
+        // Préfixe utilisateur pour le texte (nick!user@host)
+        std::string prefix = cli->getNick() + "!" + cli->getUser() + "@" + cli->getHost();
+
+        // RPL_WELCOME (001)
+        std::string line = ":" + _serverName + " 001 " + cli->getNick()
+                         + " :Welcome to the Internet Relay Network " + prefix + "\r\n";
+
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+    }
+}
+
+
+/*-------------------------------------------------*/
 
 /*--------------------CMD DU SERVER----------------*/
 
 // user/nick/jsp deja pris ?
-bool	server::isTaken(message& msg)
-{
-	if (msg.getParams()[0] == "USER")
-	{
-		for (std::list<client>::iterator i = _clients.begin(); i != _clients.end(); ++i)
-		{
-			if (msg.getParams()[0] == i->getUser())
-				return true;
-		}
-	}
-	else if (msg.getParams()[0] == "NICK")
-	{
-		for (std::list<client>::iterator i = _clients.begin(); i != _clients.end(); ++i)
-		{
-			if (msg.getParams()[0] == i->getNick())
-				return true;
-		}
-	}
-	return false;
+bool server::isNickTaken(const std::string& nick) {
+    for (std::list<client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        if (it->getNick() == nick) return true;
+    return false;
 }
+
 
 // FONCTION POUR ACTIVER POLLOUT
 void	server::polloutActivate(client* cli)
@@ -173,61 +269,62 @@ bool	server::handlePass(client* cli, message& msg)
 	return true;
 }
 
-
 //NICK
-bool	server::handleNick(client* cli, message& msg)
+bool server::handleNick(client* cli, message& msg)
 {
-	if (msg.getParams().empty())
-	{
-		std::string	error = ":server 431 * :No nickname given\r\n";
-		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
-		return false;
-	}
+    const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
 
-	if(isTaken(msg))
-	{
-		std::string error = ":server 432 * :Nickname is already in use\r\n";
-		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
-		return false; 
-	}
-	
-	std::string parsedNick = msg.getParams()[0];
-	for (size_t i = 0; i < parsedNick.length(); i++)
-	{
-		if ((parsedNick[0] <= 'a' || parsedNick[0] >= 'z') && 
-				(parsedNick[0] <= 'A' || parsedNick[0] >= 'Z'))
-			{
-			std::string error = ":server 433 * :Erroneous nickname\r\n";
-			polloutActivate(cli);
-			send(cli->getFd(), error.c_str(), error.length(), 0);
-			return false; 
-			}
-		if ((((parsedNick[i] <= 'a' || parsedNick[i] >= 'z') && 
-				(parsedNick[i] <= 'A' || parsedNick[i] >= 'Z')) &&
-					(parsedNick[i] < '0' || parsedNick[i] > '9')) &&
-						parsedNick[i] != '[' && parsedNick[i] != ']' &&
-							parsedNick[i] != '\'' && parsedNick[i] != '`' &&
-								parsedNick[i] != '_' && parsedNick[i] != '^' &&
-									parsedNick[i] != '{'  && parsedNick[i] != '}' &&
-										parsedNick[i] != '|')
-			{
-			std::string error = ":server 433 * :Erroneous nickname\r\n";
-			polloutActivate(cli);
-			send(cli->getFd(), error.c_str(), error.length(), 0);
-			return false; 
-			}
-		
-	}
-	
+    // 1) Pas de paramètre
+    if (msg.getParams().empty())
+    {
+        std::string line = ":" + _serverName + " 431 " + target + " :No nickname given\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
 
-	cli->setNick(msg.getParams()[0]);
-	std::string out = "Your NICK has been saved";
-	polloutActivate(cli);
-	send(cli->getFd(), out.c_str(), out.length(), 0);
-	return true;
+    const std::string requested = msg.getParams()[0];
+
+    // 2) Format invalide
+    if (!isValidNick(requested))
+    {
+        std::string line = ":" + _serverName + " 432 " + target + " " + requested + " :Erroneous nickname\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+
+    // 3) Déjà pris
+    if (isNickTaken(requested))
+    {
+        std::string line = ":" + _serverName + " 433 " + target + " " + requested + " :Nickname is already in use\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+
+    // 4) Changement ou première assignation
+    const bool hadNick = !cli->getNick().empty();
+    const std::string oldNick = cli->getNick();
+    cli->setNick(requested);
+
+    if (cli->getRegistered() && hadNick && oldNick != requested)
+        broadcastNickChange(cli, oldNick, requested);
+
+    // 5) Envoi du message 001 de bienvenue si enregistrement complet
+    if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
+    {
+        cli->setRegistered(true);
+        std::string prefix = cli->getNick() + "!" + cli->getUser() + "@" + cli->getHost();
+        std::string line = ":" + _serverName + " 001 " + cli->getNick()
+                         + " :Welcome to the Internet Relay Network " + prefix + "\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+    }
+
+    return true;
 }
+
 
 //USER
 bool	server::handleUser(client* cli, message& msg)
