@@ -137,3 +137,15 @@ std::list<client> 		channel::getOpList(void) const
 {
 	return (this->_operatorsList);
 }
+
+bool					channel::operator==(channel & const rhs) 
+{
+	if (this == &rhs || this->_name == rhs.getChannelName())
+		return (true);
+	return (false);
+}
+
+bool					channel::operator!=(channel & const rhs) 
+{
+	return (!(*this == rhs));
+}
