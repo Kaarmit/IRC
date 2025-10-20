@@ -171,7 +171,7 @@ static std::string userPrefix(const client* c)
 void server::broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick)
 {
     // Prépare la ligne NICK
-    const std::string line = ":" + userPrefix(cli) + " NICK :" + newNick + "\r\n";
+    const std::string line = userPrefix(cli) + " NICK :" + newNick + "\r\n";
 
     // À soi
     cli->enqueueLine(line);
@@ -190,7 +190,6 @@ void server::broadcastNickChange(client* cli, const std::string& oldNick, const 
         }
     }
 }
-
 
 // Envoi 001 à l’enregistrement
 void server::sendWelcomeIfRegistrationComplete(client* cli) 
