@@ -6,16 +6,17 @@ channel::channel(void)
 	return;
 }
 
-channel::channel(std::string name, client creator)
+channel::channel(std::string name, client& creator)
 {
 	this->_name = name;
 	this->_clientsList.push_back(creator);
 	this->_topicStatus = false;
-	this->_topic = "";
+	this->_topic.clear();
+	this->_topicTimeStamp = 0;
 	this->_limit = -1;
 	this->_inviteOnly = false;
 	this->_invitedList.clear();
-	this->_key = "";
+	this->_key.clear();
 	this->_operatorsList.push_back(creator);
 	return;
 }
@@ -33,6 +34,8 @@ channel& 		channel::operator=(channel const & rhs)
 		this->_clientsList = rhs.getClientList();
 		this->_topicStatus = rhs.isRestrictedTopic();
 		this->_topic = rhs.getTopic();
+		this->_topicWho = rhs.getTopicAuthor();
+		this->_topicTimeStamp = rhs.getTopicTimestamp();
 		this->_limit = rhs.getLimit();
 		this->_inviteOnly = rhs.isInviteOnly();
 		this->_invitedList = rhs.getInvitedList();
@@ -86,6 +89,26 @@ std::string				channel::getTopic(void) const
 void					channel::setTopic(std::string newTopic)
 {
 	this->_topic = newTopic;
+}
+
+client					channel::getTopicAuthor(void) const
+{
+	return (this->_topicWho);
+}
+
+void					channel::setTopicAuthor(client& newAuthor)
+{
+	this->_topicWho = newAuthor;
+}
+
+time_t					channel::getTopicTimestamp(void) const
+{
+	return (this->_topicTimeStamp);
+}
+
+void					channel::setTopicTimestamp(void)
+{
+	this->_topicTimeStamp = time(NULL);
 }
 
 int						channel::getLimit(void) const

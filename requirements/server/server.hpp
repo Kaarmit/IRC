@@ -39,12 +39,19 @@ class server
 		char*														_port;
 
 		/*Utils*/
-		void 	broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick);
-		void 	sendWelcomeIfRegistrationComplete(client* cli);
 		void	polloutActivate(client* cli);
+
 		bool	isNickTaken(const std::string& nick);
+		void 	sendWelcomeIfRegistrationComplete(client* cli);
+		void 	broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick);
+
+		void	broadcastJoin(client* cli, channel& chan);
+
+		bool	isTaken(message& msg);
+
+		bool	isChannel(std::string str) const;
 		/*---*/
-		
+
 		/*cmd*/
 		bool	handlePass(client* cli, message& msg);
 		bool	handleNick(client* cli, message& msg);
@@ -77,7 +84,7 @@ class server
 		void			run();
 
 		std::vector<struct pollfd>		getFds() const;
-		std::vector<struct pollfd>&		getFds();		
+		std::vector<struct pollfd>&		getFds();
 		std::list<client>				getClients() const;
 		std::list<client>&				getClients();
 		std::list<channel>				getChannels() const;

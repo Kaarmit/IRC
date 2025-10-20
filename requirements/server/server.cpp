@@ -102,14 +102,24 @@ char*	server::getPort() const
 bool	server::isTaken(message& msg)
 {
 	if (msg.getParams()[0] == "USER")
-		for (size_t i = 0; i < _clients.size(); i++)
+	{
+		for (std::list<client>::iterator it = this->_clients.begin(); it != this->_clients.end(); it++)
 		{
-			if (msg.getParams()[0] == _clients[i].getUser())
+			if (msg.getParams()[0] == it->getUser())
 
 				return true;
 		}
-
+	}
 	else if (msg.getParams()[0] == "NICK")
+	{
+		for (std::list<client>::iterator it = this->_clients.begin(); it != this->_clients.end(); it++)
+		{
+			if (msg.getParams()[0] == it->getNick())
+
+				return true;
+		}
+	}
+	return false;
 }
  /*-------------------UTILS------------------------*/
 
@@ -124,7 +134,7 @@ static bool isNickFirst(char c)
 }
 static bool isNickRest(char c)
 {
-    return isalpha(c) || isdigit(c) || isSpecial(c) || c=='-';
+    return isalnum(c) || isSpecial(c) || c=='-';
 }
 
 static bool isValidNick(const std::string& s)
@@ -139,6 +149,21 @@ static bool isValidNick(const std::string& s)
 			return false;
 	}
     return true;
+}
+
+static bool isValidUsername(const std::string& s)
+{
+	if (s.empty())
+		return false;
+	if (s.size() > 10)
+		return false;
+	for (size_t i = 0; i < s.size(); i++)
+	{
+		if(!isSpecialUser(s[i]) &&  !isalnum(s[i])) //creer isspecialUser()
+			return false;
+	}
+	return true;
+
 }
 
 static bool channelHasFd(const channel& ch, int fd)
@@ -188,7 +213,7 @@ static std::string userPrefix(const client* c)
 void server::broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick)
 {
     // Prépare la ligne NICK
-    const std::string line = ":" + userPrefix(cli) + " NICK :" + newNick + "\r\n";
+    const std::string line = userPrefix(cli) + " NICK :" + newNick + "\r\n";
 
     // À soi
     cli->enqueueLine(line);
@@ -208,6 +233,31 @@ void server::broadcastNickChange(client* cli, const std::string& oldNick, const 
     }
 }
 
+void server::broadcastJoin(client* cli, channel& chan)
+{
+	std::list<client> chanCL = chan.getClientList();
+    for (std::list<client>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan)
+	{
+		polloutActivate(&(*itChan));
+		std::string line = userPrefix(cli) + " JOIN :" + chan.getChannelName() + "\r\n";
+		itChan->enqueueLine(line);
+        if (itChan->getFd() == cli->getFd()) {
+			if (!chan.getTopic().empty())
+				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
+				cli->enqueueLine(line);
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor().getNick() + chan.getTopicTimestamp() + "\r\n"; //convertir de long/time_t a string
+				cli->enqueueLine(line);
+			for (std::list<client>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
+				// print clients presents dans le chan
+			// endof list msg
+		}
+    }
+}
+
+bool	server::isChannel(std::string str) const
+{
+	return str[0] == '#' || str[0] == '!' || str[0] == '+' || str[0] == '&';
+}
 
 // Envoi 001 à l’enregistrement
 void server::sendWelcomeIfRegistrationComplete(client* cli)
@@ -345,10 +395,58 @@ bool server::handleNick(client* cli, message& msg)
     return true;
 }
 
-
 //USER
 bool	server::handleUser(client* cli, message& msg)
 {
+	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
+
+	// 1) deja registered
+	if (cli->getRegistered())
+	{
+		std::string line = ":" + _serverName + " 462 " + target + " :You may not reregister\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+	}
+
+    // 2) moins de 4 parametres
+    if (msg.getParams().size() < 4)
+    {
+        std::string line = ":" + _serverName + " 461 " + target + " USER" + " :Not enough parameters\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+
+	const std::string username = msg.getParams()[0];
+
+    // 3) Format invalide
+    if (!isValidUsername(username))
+    {
+        std::string line = ":" + _serverName + " 468 " + target +  " :Erroneous username\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+
+	//const std::string hostname = cli->getHost();
+	//const std::string servername = this->_serverName;
+	std::string realname = msg.getParams()[3];
+
+	for (size_t i = 4; i < msg.getParams().size(); i++)
+	{
+		realname = realname + " " + msg.getParams()[i];
+	}
+	if (!realname.empty() && realname[0] == ':')
+		realname.erase(0,1);
+	cli->setUser(username);
+	cli->setReal(realname);
+
+	if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
+		sendWelcomeIfRegistrationComplete(cli);
+
+    return true;
+
 }
 //JOIN
 bool	server::handleJoin(client* cli, message& msg)
@@ -356,60 +454,41 @@ bool	server::handleJoin(client* cli, message& msg)
 	//check if registered
 	if (!cli->getRegistered())
 	{
-		std::string	error = "\r\n";
 		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
+        std::string line = ":" + this->_serverName + "451 * :You are not registered\r\n";
+        cli->enqueueLine(line);
 		return false;
 	}
 	std::vector<std::string> params = msg.getParams();
 	//check if enough parameters are provided
 	if (params.empty())
 	{
-		std::string	error = "\r\n";
 		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
+        std::string line = ":" + this->_serverName + " 461 " + cli->getNick() + " " + msg.getCommand() + " :Not enough parameters\r\n";
+        cli->enqueueLine(line);
 		return false;
 	}
 	if (params.size() > 2)
 	{
-		std::string	error = "\r\n";
 		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
+        std::string line = ":" + this->_serverName + " 461 " + cli->getNick() + " " + msg.getCommand() + " :Too many parameters\r\n";
+        cli->enqueueLine(line);
 		return false;
 	}
-
-	std::string parsedNick = msg.getParams()[0];
-	for (size_t i = 0; i < parsedNick.length(); i++)
-	{
-		if ((parsedNick[0] <= 'a' || parsedNick[0] >= 'z') &&
-				(parsedNick[0] <= 'A' || parsedNick[0] >= 'Z'))
-			{
-			std::string error = ": server 433 * :Erronoeous nickname\r\n";
-			polloutActivate(cli);
-			send(cli->getFd(), error.c_str(), error.length(), 0);
-			return false;
-			}
-		if ((((parsedNick[i] <= 'a' || parsedNick[i] >= 'z') &&
-				(parsedNick[i] <= 'A' || parsedNick[i] >= 'Z')) &&
-					(parsedNick[i] < '0' || parsedNick[i] > '9')) &&
-						parsedNick[i] != '[' && parsedNick[i] != ']' &&
-							parsedNick[i] != '\'' && parsedNick[i] != '`' &&
-								parsedNick[i] != '_' && parsedNick[i] != '^' &&
-									parsedNick[i] != '{'  && parsedNick[i] != '}' &&
-										parsedNick[i] != '|')
-			{
-			std::string error = ": server 433 * :Erronoeous nickname\r\n";
 	// check if "join 0" = leave all channels;
 	if (params[0] == "0" && params.size() == 1) {
 		//remove client from all channels' client lists
 		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
-			//appeler la fonction handleQuit pour chaque chan: cli, msg
+		{
+			// it->getClientList().remove(*cli);
+			// it->getOpList().remove(*cli);
+		}
 		//clear client chan list
 		cli->getChannelList().clear();
 		return true;
 	}
 	//avec une commande /join #chan1,#chan2 key1,key2
-	//subdiviser params en deux vect chanName, pwd
+	//subdiviser params en deux vect chanName, et mdp
 	std::vector<std::string> chanGiven;
 	chanGiven.clear();
 	std::vector<std::string> keysGiven;
@@ -427,38 +506,18 @@ bool	server::handleJoin(client* cli, message& msg)
 	}
 	if (params.size() > chanGiven.size() + keysGiven.size())
 	{
-		std::string	error = "\r\n";
 		polloutActivate(cli);
-		send(cli->getFd(), error.c_str(), error.length(), 0);
+        std::string line = ":" + this->_serverName + " 476 " + cli->getNick() + " " + params[0] + " :Bad channel mask\r\n";
+        cli->enqueueLine(line);
 		return false;
 	}
 	for (size_t i = 0; i < chanGiven.size(); ++i)
 	{
-		if (chanGiven[i].front() != '#' || chanGiven[i].front() != '&' || chanGiven[i].front() != '+')
+		if (chanGiven[i].front() != '#' || chanGiven[i].front() != '&' || chanGiven[i].front() != '+' || chanGiven[i].front() != '!')
 		{
-			std::string	error = "\r\n";
 			polloutActivate(cli);
-			send(cli->getFd(), error.c_str(), error.length(), 0);
-			return false;
-			}
-
-	}
-
-
-	cli->setNick(msg.getParams()[0]);
-	std::string out = "Your NICK has been saved";
-	polloutActivate(cli);
-	send(cli->getFd(), out.c_str(), out.length(), 0);
-	return true;
-}
-
-//USER
-bool	server::handleUser(client* cli, message& msg)
-{
-}
-//JOIN
-bool	server::handleJoin(client* cli, message& msg)
-{
+        	std::string line = ":" + this->_serverName + " 476 " + cli->getNick() + " " + chanGiven[i] + " :Bad channel mask\r\n";
+        	cli->enqueueLine(line);
 			continue;
 		}
 		//search for channel name
@@ -476,74 +535,66 @@ bool	server::handleJoin(client* cli, message& msg)
 		else
 		{
 			//check if already in the channel
-			if (channelHasFd(*itChan, cli->getFd()) == true)
+			if (channelHasFd(*itChan, cli->getFd()) == false)
 			{
-				std::string	error = "\r\n";
-				polloutActivate(cli);
-				send(cli->getFd(), error.c_str(), error.length(), 0);
-				continue;
-			}
-			//check if client is invited
-			if (itChan->isInviteOnly())
-			{
-				std::list<client> invitedList = itChan->getInvitedList();
-				if (std::find(invitedList.begin(), invitedList.end(), *cli) == invitedList.end())
+				//check if client is invited
+				if (itChan->isInviteOnly())
 				{
-					//not invited can't enter
-					std::string	error = "\r\n";
-					polloutActivate(cli);
-					send(cli->getFd(), error.c_str(), error.length(), 0);
-					continue;
+					std::list<client> invitedList = itChan->getInvitedList();
+					if (std::find(invitedList.begin(), invitedList.end(), *cli) == invitedList.end())
+					{
+						//not invited can't enter
+						polloutActivate(cli);
+        				std::string line = ":" + this->_serverName + " 473 " + cli->getNick() + " " + chanGiven[i] + " :You need an invite to join this channel\r\n";
+        				cli->enqueueLine(line);
+						continue;
+					}
 				}
-			}
-			//check if theres a channel key/password
-			if (!itChan->getKey().empty())
-			{
-				if (keysGiven.empty() || itChan->getKey().compare(keysGiven[i]) != 0)
+				//check if theres a channel key/password
+				if (!itChan->getKey().empty())
 				{
-					std::string	error = "\r\n";
-					polloutActivate(cli);
-					send(cli->getFd(), error.c_str(), error.length(), 0);
-					continue;
+					if (keysGiven.empty() || itChan->getKey().compare(keysGiven[i]) != 0)
+					{
+						polloutActivate(cli);
+        				std::string line = ":" + this->_serverName + " 475 " + cli->getNick() + " " + chanGiven[i] + " :Invalid key\r\n";
+        				cli->enqueueLine(line);
+						continue;
+					}
 				}
-			}
-			//check if theres a limit
-			if (itChan->getLimit() != -1)
-			{
-				if (itChan->getLimit() <= itChan->getClientList().size())
+				//check if theres a limit
+				if (itChan->getLimit() != -1)
 				{
-					std::string	error = "\r\n";
-					polloutActivate(cli);
-					send(cli->getFd(), error.c_str(), error.length(), 0);
-					continue;
+					if (itChan->getLimit() <= itChan->getClientList().size())
+					{
+						polloutActivate(cli);
+        				std::string line = ":" + this->_serverName + " 471 " + cli->getNick() + " " + chanGiven[i] + " :Channel is full\r\n";
+        				cli->enqueueLine(line);
+						continue;
+					}
 				}
+				// if client got invited, remove him from the invited list
+				if (!itChan->getInvitedList().empty())
+					itChan->getInvitedList().remove(*cli);
+				//add the channel to the client's channel list
+				cli->getChannelList().push_back(params[0]);
+				//add the client to the channel's client list
+				itChan->getClientList().push_back(*cli);
+				//send the appropriate message to the client
+				//...
+				//send the appropriate message to the channel members
+				//...
 			}
-			// if client got invited, remove him from the invited list
-			if (!itChan->getInvitedList().empty())
-				itChan->getInvitedList().remove(*cli);
-			//add the channel to the client's channel list
-			cli->getChannelList().push_back(params[0]);
-			//add the client to the channel's client list
-			itChan->getClientList().push_back(*cli);
 		}
-		//send the appropriate message to the client
-		//...
-		//send the appropriate message to the channel members
-		//...
 	}
 	return (true);
 }
+
 //PART
 bool	server::handlePart(client* cli, message& msg)
 {
 }
+
 //PRIVMSG
-
-bool	isChannel(std::string str)
-{
-	return str[0] == '#' || str[0] == '!' || str[0] == '+' || str[0] == '&';
-}
-
 bool	server::handlePrivmsg(client* cli, message& msg)
 {
 	//erreur 401 si cli inconnu
@@ -665,15 +716,13 @@ bool	server::handlePing(client* cli, message& msg)
 //QUIT
 bool	server::handleQuit(client* cli, message& msg)
 {
-	// si msg.cmd == quit
-		//	verifier si le channel existe + bon format
-		//	verifier si le client fait bien partie du channel
-		// verif autres param
+	// verif si param.empty
 	// iterer sur cli channelList
 	// it->getClientList().remove(*cli);
 	// it->getOpList().remove(*cli);
 	// cli->channelList().remove(it);
-	// verifier si ct le dernier client du channel, si oui enlever le channel de la liste de chan serv
+	//verifier si ct le dernier client du channel, si oui enlever le channel de la liste de chan serv
+	//deco le client du server
 }
 //WHO(optionnel)
 bool	server::handleWho(client* cli, message& msg)
