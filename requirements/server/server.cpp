@@ -110,6 +110,7 @@ bool	server::isTaken(message& msg)
 		}
 
 	else if (msg.getParams()[0] == "NICK")
+}
  /*-------------------UTILS------------------------*/
 
 static bool isSpecial(char c)
@@ -537,74 +538,109 @@ bool	server::handlePart(client* cli, message& msg)
 {
 }
 //PRIVMSG
+
+bool	isChannel(std::string str)
+{
+	return str[0] == '#' || str[0] == '!' || str[0] == '+' || str[0] == '&';
+}
+
 bool	server::handlePrivmsg(client* cli, message& msg)
 {
-	/*client to client*/
-	//cli veut envoyer un msg.params[1] a msg.params[0]
-	//etape 1: est ce qu'il y a les deux params?
-		//erreur 411 si pas de dest
-	if (msg.getParams()[0].empty())
-	{
-		std::string error = ":server 411 * : Incorrect destination\r\n";
-		cli->enqueueLine(error);
-		polloutActivate(cli);
-	}
-		//erreur 412 si pas de msg
-	if (msg.getParams()[1].empty()) //verif le message pour sencure ???
-	{
-		std::string error = ":server 412 * : Incorrect message\r\n";
-		cli->enqueueLine(error);
-		polloutActivate(cli);
-	}
-	//etape 2: verif d'auth de cli
-		//erreur 401 si utilisateur inconnu
+	//erreur 401 si cli inconnu
 	if (!cli->getRegistered())
 	{
-		std::string error = ":server 401 * : Client not regitered\r\n";
+		std::string error = ":server 451 * : You have not regitered\r\n";
 		cli->enqueueLine(error);
 		polloutActivate(cli);
+		return false;
 	}
-	//etape 3: le destinataire msg.params[0] existe?
-		//erreur 401 si utilisateur inconnu
-	bool	isUser = true;
-	for (size_t i = 0; i < this->_clients.size(); i++)
+
+	std::vector<std::string>	params = msg.getParams();
+	//erreur 411 si pas d'args
+	if (params.empty())
 	{
-		if (this->_clients[i].getFd() != cli->getFd())
+		std::string error = ":server 411 " + cli->getNick() + ":No recipient given (PRIVMSG)\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
+		return false;
+	}
+	//ereur 412 si pas de message
+	if (params.size() < 2)
+	{
+		std::string error = ":server 412 " + cli->getNick() + ":No text to send\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
+		return false;
+	}
+
+	/*client to client*/
+	if (!isChannel(msg.getParams()[0]))
+	{
+		//erreur 401 si utilisateur dest inconnu
+		client* destClient = NULL;
+		for (std::list<client>::iterator	it = this->_clients.begin(); it != this->_clients.end(); it++)
 		{
-			isUser = false;
-			break;
+			if (it->getNick() == params[0])
+			{
+				destClient = &(*it);
+				break;
+			}
+		}
+		if (!destClient)
+		{
+			std::string error = ":server 401 " + cli->getNick() + " " + params[0] + ":No such nick\r\n";
+			cli->enqueueLine(error);
+			polloutActivate(cli);
+			return false;
+		}
+		//etape 4: construiruction du message
+		std::string	toSend = userPrefix(cli) + " " + msg.getCommand() + " " + params[0] + " :" + params[1] + "\r\n";
+		//etape 5: envoie du message au destinataire
+		destClient->enqueueLine(toSend);
+		polloutActivate(destClient);
+	}
+	else
+	{
+		/*client to channel*/
+		//erreur 403 si channel n'existe pas
+		channel*	destChannel = NULL;
+		for (std::list<channel>::iterator	it = this->_channels.begin(); it != this->_channels.end(); it++)
+		{
+			if (it->getChannelName() == params[0])
+			{
+				destChannel = &(*it);
+				break;
+			}
+		}
+		if (!destChannel)
+		{
+			std::string error = ":server 403 " + cli->getNick() + ":No such channel\r\n";
+			cli->enqueueLine(error);
+			polloutActivate(cli);
+			return false;
+		}
+		//erreur 404 si ce n'est pas le cas et si channel en mode +m et user not operateur
+		if (!destChannel->isMember(cli))
+		{
+			std::string error = ":server 404 " + cli->getNick() + " :User doesn't belongs to " + params[0] + "\r\n";
+			cli->enqueueLine(error);
+			polloutActivate(cli);
+			return false;
+		}
+		//construiruction du message
+		std::string	toSend = userPrefix(cli) + msg.getCommand() + params[0] + " :" + params[1];
+		//envoie du message au destinataire
+		//on boucle sur tous les membres du channel
+		for (std::list<client>::iterator it = destChannel->getClientList().begin(); it != destChannel->getClientList().end(); it++)
+		{
+			//on envoie a tous sauf le cli
+			if (it->getFd() == cli->getFd())
+				continue;
+			it->enqueueLine(toSend);
+			polloutActivate(&(*it));
 		}
 	}
-	if (!isUser)
-	{
-		std::string error = ":server 401 * : User not regitered\r\n";
-		cli->enqueueLine(error);
-		polloutActivate(cli);
-	}
-	//etape 4: construiruction du message
-		//prefix : name!name@host
-		//cmd : PRIVMSG
-		//dest : name
-		//msg : blabla\r\n
-	//etape 5: envoie du message au destinataire
-
-	/*client to channel*/
-	//cli veut envoyer un msg.params[1] au channel msg.params[0]
-	//etape 2: verif d'auth de cli
-		//erreur 451 si utilisateur inconnu
-	//etape 3: le destinataire msg.params[0] existe?
-		//erreur 403 si channel n'existe pas
-	//etape 4: verif si le user est dans le channel
-		//erreur 404 si ce n'est pas le cas et si channel en mode +m et user not operateur
-	//etape 4: construiruction du message
-		//prefix : name!name@host
-		//cmd : PRIVMSG
-		//dest : name
-		//msg : blabla\r\n
-	//etape 5: envoie du message au destinataire
-		//on boucle sur tous les membres du channel
-			//on envoie a tous sauf le cli
-
+	return true;
 }
 //KICK
 bool	server::handleKick(client* cli, message& msg)
@@ -646,7 +682,10 @@ bool	server::handleWho(client* cli, message& msg)
 
 void	server::initCmdServer()
 {
+	this->_cmdList["PASS"] = &server::handlePass;
 	this->_cmdList["NICK"] = &server::handleNick;
+	this->_cmdList["USER"] = &server::handleUser;
+
 }
 
 /*-------------------------------------------------*/
