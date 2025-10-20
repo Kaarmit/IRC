@@ -199,7 +199,7 @@ bool	server::handleNick(client* cli, message& msg)
 		if ((parsedNick[0] <= 'a' || parsedNick[0] >= 'z') && 
 				(parsedNick[0] <= 'A' || parsedNick[0] >= 'Z'))
 			{
-			std::string error = ":server 433 * :Erronoeous nickname\r\n";
+			std::string error = ":server 433 * :Erroneous nickname\r\n";
 			polloutActivate(cli);
 			send(cli->getFd(), error.c_str(), error.length(), 0);
 			return false; 
@@ -213,7 +213,7 @@ bool	server::handleNick(client* cli, message& msg)
 									parsedNick[i] != '{'  && parsedNick[i] != '}' &&
 										parsedNick[i] != '|')
 			{
-			std::string error = ":server 433 * :Erronoeous nickname\r\n";
+			std::string error = ":server 433 * :Erroneous nickname\r\n";
 			polloutActivate(cli);
 			send(cli->getFd(), error.c_str(), error.length(), 0);
 			return false; 
