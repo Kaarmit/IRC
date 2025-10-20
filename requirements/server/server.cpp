@@ -157,6 +157,7 @@ static bool sharesAChannelByFd(const client* a, const client* b,
 // Construit un prefix utilisateur : nick!user@host
 static std::string userPrefix(const client* c) 
 {
+	
     return c->getNick() + "!" + c->getUser() + "@" + c->getHost();
 }
 
@@ -316,14 +317,7 @@ bool server::handleNick(client* cli, message& msg)
 
     // 5) Envoi du message 001 de bienvenue si enregistrement complet
     if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
-    {
-        cli->setRegistered(true);
-        std::string prefix = cli->getNick() + "!" + cli->getUser() + "@" + cli->getHost();
-        std::string line = ":" + _serverName + " 001 " + cli->getNick()
-                         + " :Welcome to the Internet Relay Network " + prefix + "\r\n";
-        cli->enqueueLine(line);
-        polloutActivate(cli);
-    }
+		sendWelcomeIfRegistrationComplete(cli);
 
     return true;
 }
@@ -416,6 +410,14 @@ bool	server::handleJoin(client* cli, message& msg)
 		}
 		else
 		{
+			//check if already in the channel
+			if (channelHasFd(*itChan, cli->getFd()) == true) 
+			{
+				std::string	error = "\r\n";
+				polloutActivate(cli);
+				send(cli->getFd(), error.c_str(), error.length(), 0);
+				continue;
+			}
 			//check if client is invited
 			if (itChan->isInviteOnly())
 			{
