@@ -242,20 +242,32 @@ void server::broadcastNickChange(client* cli, const std::string& oldNick, const 
 void server::broadcastJoin(client* cli, channel& chan)
 {
 	std::list<client> chanCL = chan.getClientList();
-    for (std::list<client>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan)
+	std::string line;
+    for (std::list<client>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan) 
 	{
 		polloutActivate(&(*itChan));
-		std::string line = userPrefix(cli) + " JOIN :" + chan.getChannelName() + "\r\n";
+		line = userPrefix(cli) + " JOIN :" + chan.getChannelName() + "\r\n";
 		itChan->enqueueLine(line);
-        if (itChan->getFd() == cli->getFd()) {
-			if (!chan.getTopic().empty())
+        if (itChan->getFd() == cli->getFd()) 
+		{
+			if (!chan.getTopic().empty()) 
+			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
 				cli->enqueueLine(line);
-				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor().getNick() + chan.getTopicTimestamp() + "\r\n"; //convertir de long/time_t a string
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor().getNick() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
 				cli->enqueueLine(line);
+			}
 			for (std::list<client>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
-				// print clients presents dans le chan
-			// endof list msg
+			{
+				line = this->_serverName + " 353 " + cli->getNick() + " = " + chan.getChannelName() + ":";
+				std::string present = itPrint->getNick();
+				if (std::find(chan.getOpList().begin(), chan.getOpList().end(), *itPrint) != chan.getOpList().end())
+					present.insert(present.begin(), '@');
+				line.append(" " + present);
+			}
+			cli->enqueueLine(line);
+			line = this->_serverName + " 366 " + cli->getNick() + " " + chan.getChannelName() + " :End of /NAMES list.\r\n";
+			cli->enqueueLine(line);
 		}
     }
 }
@@ -486,8 +498,10 @@ bool	server::handleJoin(client* cli, message& msg)
 		//remove client from all channels' client lists
 		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
 		{
-			// it->getClientList().remove(*cli);
-			// it->getOpList().remove(*cli);
+			it->getClientList().remove(*cli);
+			it->getOpList().remove(*cli);
+			// notif to client he left ?
+			//	broadcast to channel clients still remaining
 		}
 		//clear client chan list
 		cli->getChannelList().clear();
@@ -519,7 +533,7 @@ bool	server::handleJoin(client* cli, message& msg)
 	}
 	for (size_t i = 0; i < chanGiven.size(); ++i)
 	{
-		if (chanGiven[i].front() != '#' || chanGiven[i].front() != '&' || chanGiven[i].front() != '+' || chanGiven[i].front() != '!')
+		if (server::isChannel(chanGiven[i]) == false)
 		{
 			polloutActivate(cli);
         	std::string line = ":" + this->_serverName + " 476 " + cli->getNick() + " " + chanGiven[i] + " :Bad channel mask\r\n";
@@ -585,10 +599,7 @@ bool	server::handleJoin(client* cli, message& msg)
 				cli->getChannelList().push_back(params[0]);
 				//add the client to the channel's client list
 				itChan->getClientList().push_back(*cli);
-				//send the appropriate message to the client
-				//...
-				//send the appropriate message to the channel members
-				//...
+				broadcastJoin(cli, *itChan);
 			}
 		}
 	}
