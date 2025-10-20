@@ -200,7 +200,7 @@ void server::sendWelcomeIfRegistrationComplete(client* cli)
         cli->setRegistered(true);
 
         // Préfixe utilisateur pour le texte (nick!user@host)
-        std::string prefix = cli->getNick() + "!" + cli->getUser() + "@" + cli->getHost();
+        std::string prefix = userPrefix(cli);
 
         // RPL_WELCOME (001)
         std::string line = ":" + _serverName + " 001 " + cli->getNick()
