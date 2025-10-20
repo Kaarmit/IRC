@@ -124,6 +124,21 @@ static bool isValidNick(const std::string& s)
     return true;
 }
 
+static bool isValidUsername(const std::string& s)
+{
+	if (s.empty())
+		return false;
+	if (s.size() > 10)
+		return false;
+	for (size_t i = 0; i < s.size(); i++)
+	{
+		if(!isSpecialUser(s[i]) &&  !isalnum(s[i]))
+			return false;
+	}
+	return true;
+	
+}
+
 static bool channelHasFd(const channel& ch, int fd) 
 {
     std::list<client> lst = ch.getClientList(); 
