@@ -12,6 +12,7 @@
 
 #include "../client/client.hpp"
 #include "../channel/channel.hpp"
+#include "../message/message.hpp"
 
 #include <sys/socket.h>
 #include <netinet/in.h>

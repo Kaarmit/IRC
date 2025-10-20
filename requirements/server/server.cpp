@@ -498,14 +498,14 @@ bool	server::handleJoin(client* cli, message& msg)
 		return false;
 	}
 	// check if "join 0" = leave all channels;
-	if (params[0] == "0" && params.size() == 1) {
+	if (params[0] == "0" && params.size() == 1) 
+	{			
 		//remove client from all channels' client lists
-		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
+		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it) 
 		{
-			it->getClientList().remove(*cli);
-			it->getOpList().remove(*cli);
-			// notif to client he left ?
-			//	broadcast to channel clients still remaining
+			message	msg;
+			msg.setParams(it->getChannelName());
+			(this->*_cmdList["PART"])(cli, msg);
 		}
 		//clear client chan list
 		cli->getChannelList().clear();
