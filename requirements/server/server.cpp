@@ -756,6 +756,8 @@ void	server::initCmdServer()
 	this->_cmdList["PASS"] = &server::handlePass;
 	this->_cmdList["NICK"] = &server::handleNick;
 	this->_cmdList["USER"] = &server::handleUser;
+	this->_cmdList["JOIN"] = &server::handleJoin;
+	this->_cmdList["PRIVMSG"] = &server::handlePrivmsg;
 }
 
 /*-------------------------------------------------*/
