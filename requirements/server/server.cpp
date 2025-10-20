@@ -107,7 +107,7 @@ static bool isNickFirst(char c)
 }
 static bool isNickRest(char c) 
 {
-    return isalpha(c) || isdigit(c) || isSpecial(c) || c=='-';
+    return isalnum(c) || isSpecial(c) || c=='-';
 }
 
 static bool isValidNick(const std::string& s) 
