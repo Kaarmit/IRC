@@ -1,20 +1,9 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   channel.hpp                                        :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/10/07 14:47:06 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/20 17:40:26 by aistierl         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
 
 #include <iostream>
 #include <list>
+#include <algorithm>
 
 #include "../client/client.hpp"
 
@@ -25,7 +14,7 @@ class channel
 		std::list<client>		_clientsList;
 		bool					_topicStatus;
 		std::string				_topic;
-		client&					_topicWho;
+		client					_topicWho;
 		time_t					_topicTimeStamp;
 		int						_limit;
 		bool					_inviteOnly;
@@ -43,10 +32,13 @@ class channel
 
 		std::string				getChannelName(void) const;
 		void					setChannelName(std::string newName);
+
 		std::list<client>&		getClientList(void);
-		std::list<client> 		getClientList(void) const;
+		std::list<client>		getClientList(void) const;
+
 		bool					isRestrictedTopic(void) const;
 		void					setRestrictedTopic(bool newStatus);
+
 		std::string				getTopic(void) const;
 		void					setTopic(std::string newTopic);
 		client					getTopicAuthor(void) const;
@@ -55,17 +47,23 @@ class channel
 		void					setTopicTimestamp(void);
 		int						getLimit(void) const;
 		void					setLimit(int newLimit);
+
 		bool					isInviteOnly(void) const;
 		void					setInviteOnly(bool newStatus);
+
 		std::list<client>&		getInvitedList(void);
 		std::list<client>		getInvitedList(void) const;
+
 		std::string				getKey(void) const;
 		void					setKey(std::string newKey);
+
 		std::list<client>&		getOpList(void);
 		std::list<client>		getOpList(void) const;
 
 		bool						operator==(channel & const rhs);
-		bool						operator!=(channel & const rhs);					
+		bool						operator!=(channel & const rhs);
+
+		bool					isMember(client* cli) const;
 
 };
 
