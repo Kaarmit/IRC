@@ -29,14 +29,22 @@
 class server
 {
 	private:
-		std::vector<struct pollfd>		_fds;
-		std::vector<client>				_clients;
-		std::map<std::string, channel>	_channels;
+		std::vector<struct pollfd>									_fds;
+		std::list<client>											_clients;
+		std::list<channel>											_channels;
 		std::map<std::string, bool (server::*)(client*, message&)>	_cmdList;
-		std::string						_passWord;
-		int								_serverFd;
-		char*							_port;
+		std::string													_passWord;
+		std::string													_serverName;
+		int															_serverFd;
+		char*														_port;
 
+		/*Utils*/
+		void 	broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick);
+		void 	sendWelcomeIfRegistrationComplete(client* cli);
+		void	polloutActivate(client* cli);
+		bool	isNickTaken(const std::string& nick);
+		/*---*/
+		
 		/*cmd*/
 		bool	handlePass(client* cli, message& msg);
 		bool	handleNick(client* cli, message& msg);
@@ -53,20 +61,30 @@ class server
 		bool	handleWho(client* cli, message& msg);
 		/*---*/
 
-		bool	isTaken(message& msg);
-		void	polloutActivate(client* cli);
+
 		void	initCmdServer();
 
+		server(void);
+
 	public:
+
 		server(char* port, char* pwd);
+		server(const server& copy);
+		server&			operator=(const server& rhs);
 		~server();
 
-		void	initServSocket(char* port);
-		void	run();
+		void			initServSocket(char* port);
+		void			run();
 
-		std::string	getPassWord() const;
-		int			getFd() const;
-		char*		getPort() const;
+		std::vector<struct pollfd>		getFds() const;
+		std::vector<struct pollfd>&		getFds();		
+		std::list<client>				getClients() const;
+		std::list<client>&				getClients();
+		std::list<channel>				getChannels() const;
+		std::list<channel>&				getChannels();
+		int								getServerFd() const;
+		std::string						getPassWord() const;
+		char*							getPort() const;
 };
 
 #endif
