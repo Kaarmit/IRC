@@ -346,6 +346,55 @@ bool server::handleNick(client* cli, message& msg)
 //USER
 bool	server::handleUser(client* cli, message& msg)
 {
+	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
+	
+	// 1) deja registered
+	if (cli->getRegistered())
+	{
+		std::string line = ":" + _serverName + " 462 " + target + " :You may not reregister\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+	}
+	
+    // 2) moins de 4 parametres
+    if (msg.getParams().size() < 4)
+    {
+        std::string line = ":" + _serverName + " 461 " + target + " USER" + " :Not enough parameters\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+	
+	const std::string username = msg.getParams()[0];
+
+    // 3) Format invalide
+    if (!isValidUsername(username))
+    {
+        std::string line = ":" + _serverName + " 468 " + target +  " :Erroneous username\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+	
+	//const std::string hostname = cli->getHost();
+	//const std::string servername = this->_serverName;
+	std::string realname = msg.getParams()[3];
+	
+	for (size_t i = 4; i < msg.getParams().size(); i++)
+	{
+		realname = realname + " " + msg.getParams()[i];
+	}
+	if (!realname.empty() && realname[0] == ':')
+		realname.erase(0,1);
+	cli->setUser(username);
+	cli->setReal(realname);
+		
+	if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
+		sendWelcomeIfRegistrationComplete(cli);
+
+    return true;
+	
 }
 //JOIN
 bool	server::handleJoin(client* cli, message& msg)
