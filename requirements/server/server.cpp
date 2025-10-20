@@ -190,11 +190,44 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 	//cli veut envoyer un msg.params[1] a msg.params[0]
 	//etape 1: est ce qu'il y a les deux params?
 		//erreur 411 si pas de dest
+	if (msg.getParams()[0].empty())
+	{
+		std::string error = ":server 411 * : Incorrect destination\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
+	}
 		//erreur 412 si pas de msg
+	if (msg.getParams()[1].empty()) //verif le message pour sencure ???
+	{
+		std::string error = ":server 412 * : Incorrect message\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
+	}
 	//etape 2: verif d'auth de cli
 		//erreur 401 si utilisateur inconnu
+	if (!cli->getRegistered())
+	{
+		std::string error = ":server 401 * : Client not regitered\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
+	}
 	//etape 3: le destinataire msg.params[0] existe?
 		//erreur 401 si utilisateur inconnu
+	bool	isUser = true;
+	for (size_t i = 0; i < this->_clients.size(); i++)
+	{
+		if (this->_clients[i].getFd() != cli->getFd())
+		{
+			isUser = false;
+			break;
+		}
+	}
+	if (!isUser)
+	{
+		std::string error = ":server 401 * : User not regitered\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
+	}
 	//etape 4: construiruction du message
 		//prefix : name!name@host
 		//cmd : PRIVMSG
@@ -204,9 +237,6 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 
 	/*client to channel*/
 	//cli veut envoyer un msg.params[1] au channel msg.params[0]
-	//etape 1: est ce qu'il y a les deux params?
-		//erreur 411 si pas de dest
-		//erreur 412 si pas de msg
 	//etape 2: verif d'auth de cli
 		//erreur 451 si utilisateur inconnu
 	//etape 3: le destinataire msg.params[0] existe?
