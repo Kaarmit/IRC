@@ -106,6 +106,13 @@ time_t					channel::getTopicTimestamp(void) const
 	return (this->_topicTimeStamp);
 }
 
+std::string				channel::getTopicTimestampStr(void) const 
+{
+	std::ostringstream oss;
+    oss << this->_topicTimeStamp;
+    return (oss.str());
+}
+
 void					channel::setTopicTimestamp(void)
 {
 	this->_topicTimeStamp = time(NULL);

@@ -248,7 +248,7 @@ void server::broadcastJoin(client* cli, channel& chan)
 			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
 				cli->enqueueLine(line);
-				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor().getNick() + chan.getTopicTimestamp() + "\r\n"; //convertir de long/time_t a string
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor().getNick() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
 				cli->enqueueLine(line);
 			}
 			for (std::list<client>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
@@ -492,8 +492,8 @@ bool	server::handleJoin(client* cli, message& msg)
 		//remove client from all channels' client lists
 		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
 		{
-			// it->getClientList().remove(*cli);
-			// it->getOpList().remove(*cli);
+			it->getClientList().remove(*cli);
+			it->getOpList().remove(*cli);
 			// notif to client he left ?
 			//	broadcast to channel clients still remaining
 		}
@@ -527,7 +527,7 @@ bool	server::handleJoin(client* cli, message& msg)
 	}
 	for (size_t i = 0; i < chanGiven.size(); ++i)
 	{
-		if (chanGiven[i].front() != '#' || chanGiven[i].front() != '&' || chanGiven[i].front() != '+' || chanGiven[i].front() != '!')
+		if (server::isChannel(chanGiven[i]) == false)
 		{
 			polloutActivate(cli);
         	std::string line = ":" + this->_serverName + " 476 " + cli->getNick() + " " + chanGiven[i] + " :Bad channel mask\r\n";

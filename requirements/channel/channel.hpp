@@ -2,6 +2,7 @@
 #define CHANNEL_HPP
 
 #include <iostream>
+#include <sstream>
 #include <list>
 #include <algorithm>
 
@@ -44,6 +45,7 @@ class channel
 		client					getTopicAuthor(void) const;
 		void					setTopicAuthor(client& newAuthor);
 		time_t					getTopicTimestamp(void) const;
+		std::string				getTopicTimestampStr(void) const;
 		void					setTopicTimestamp(void);
 		int						getLimit(void) const;
 		void					setLimit(int newLimit);
