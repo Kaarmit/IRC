@@ -17,7 +17,7 @@ channel::channel(std::string name, client& creator)
 	this->_invitedList.clear();
 	this->_key.clear();
 	this->_operatorsList.push_back(creator);
-	this->_topicWho = NULL;
+	this->_topicWho.clear();
 	return;
 }
 
@@ -91,12 +91,12 @@ void					channel::setTopic(std::string newTopic)
 	this->_topic = newTopic;
 }
 
-client*					channel::getTopicAuthor(void) const
+std::string					channel::getTopicAuthor(void) const
 {
 	return (this->_topicWho);
 }
 
-void					channel::setTopicAuthor(client* newAuthor)
+void					channel::setTopicAuthor(std::string newAuthor)
 {
 	this->_topicWho = newAuthor;
 }

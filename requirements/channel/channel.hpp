@@ -15,7 +15,7 @@ class channel
 		std::list<client>		_clientsList;
 		bool					_topicStatus;
 		std::string				_topic;
-		client*					_topicWho;
+		std::string				_topicWho;
 		time_t					_topicTimeStamp;
 		int						_limit;
 		bool					_inviteOnly;
@@ -42,8 +42,8 @@ class channel
 
 		std::string				getTopic(void) const;
 		void					setTopic(std::string newTopic);
-		client*					getTopicAuthor(void) const;
-		void					setTopicAuthor(client* newAuthor);
+		std::string				getTopicAuthor(void) const;
+		void					setTopicAuthor(std::string newAuthor);
 		time_t					getTopicTimestamp(void) const;
 		std::string				getTopicTimestampStr(void) const;
 		void					setTopicTimestamp(void);
