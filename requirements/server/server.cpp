@@ -241,7 +241,7 @@ void server::broadcastJoin(client* cli, channel& chan)
 			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
 				cli->enqueueLine(line);
-				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor()->getNick() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
 				cli->enqueueLine(line);
 			}
 			for (std::list<client>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
@@ -814,6 +814,7 @@ bool	server::handleQuit(client* cli, message& msg)
 	// it->getOpList().remove(*cli);
 	// cli->channelList().remove(it);
 	//verifier si ct le dernier client du channel, si oui enlever le channel de la liste de chan serv
+	//reset le channelAuthor pointeur a NULL
 	//deco le client du server
 	(void)cli; (void)msg;
 	return true;
