@@ -128,6 +128,13 @@ static bool isValidNick(const std::string& s)
     return true;
 }
 
+// user/nick/jsp deja pris ?
+bool server::isNickTaken(const std::string& nick) {
+    for (std::list<client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        if (it->getNick() == nick) return true;
+    return false;
+}
+
 static bool isSpecialUser(char c)
 {
 	return c == '-' || c == '_' || c == '.';
@@ -276,19 +283,6 @@ void server::sendWelcomeIfRegistrationComplete(client* cli)
     }
 }
 
-
-/*-------------------------------------------------*/
-
-/*--------------------CMD DU SERVER----------------*/
-
-// user/nick/jsp deja pris ?
-bool server::isNickTaken(const std::string& nick) {
-    for (std::list<client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-        if (it->getNick() == nick) return true;
-    return false;
-}
-
-
 // FONCTION POUR ACTIVER POLLOUT
 void	server::polloutActivate(client* cli)
 {
@@ -300,6 +294,10 @@ void	server::polloutActivate(client* cli)
 	}
 	return;
 }
+
+/*-------------------------------------------------*/
+
+/*--------------------CMD DU SERVER----------------*/
 
 //PASS
 bool	server::handlePass(client* cli, message& msg)
@@ -589,8 +587,16 @@ bool	server::handleJoin(client* cli, message& msg)
 //PART
 bool server::handlePart(client *cli, message &msg)
 {
-    // 1) Pas de paramètre → erreur 461
-	    if (msg.getParams().empty())
+	// 1) client pas registered
+	if (!cli->getRegistered())
+	{
+        std::string line = ":" + this->_serverName + "451 * :You are not registered\r\n";
+        cli->enqueueLine(line);
+		polloutActivate(cli);
+		return false;
+	}
+    // 2) Pas de paramètre → erreur 461
+	if (msg.getParams().empty())
     {
         std::string line = ":" + _serverName + " 461 " + cli->getNick() + " PART" + " :Not enough parameters\r\n";
         cli->enqueueLine(line);
@@ -598,15 +604,77 @@ bool server::handlePart(client *cli, message &msg)
         return false;
     }
 	
+	// 3) Découper la liste de channels
+	std::vector<std::string> chanGiven;
+	std::stringstream ss(msg.getParams()[0]);
+	std::string item;
+	while (std::getline(ss, item, ','))
+	{
+		if (std::find(chanGiven.begin(), chanGiven.end(), item) == chanGiven.end())
+			chanGiven.push_back(item);
+	}
 	
-    // 2) Découper la liste de channels
+	// 4) verifier si vecteur vide 
+	if (chanGiven.empty())
+	{
+	    std::string line = ":" + _serverName + " 461 " + cli->getNick() + " PART" + " :Not enough parameters\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;	
+	}
+	
+	// 5) verifier mask + channel existe + appartenance au channel
+	std::vector<std::string> validChan;
+	for (size_t i = 0; i < chanGiven.size(); ++i)
+	{
+		if (server::isChannel(chanGiven[i]) == false)
+		{
+        	std::string line = ":" + this->_serverName + " 476 " + cli->getNick() + " " + chanGiven[i] + " :Bad channel mask\r\n";
+        	cli->enqueueLine(line);
+			polloutActivate(cli);
+			continue;
+		}
+
+		if(std::find(_channels.begin(), _channels.end(), chanGiven[i]) == _channels.end())
+		{	
+        	std::string line = ":" + this->_serverName + " 403 " + cli->getNick() + " " + chanGiven[i] + " :No such channel\r\n";
+        	cli->enqueueLine(line);
+			polloutActivate(cli);
+			continue;
+		}
+	
+		std::list<channel>::iterator itChan = std::find(this->_channels.begin(), this->_channels.end(), chanGiven[i]);
+		if (channelHasFd(*itChan, cli->getFd()) == false)
+		{
+			std::string line = ":" + this->_serverName + " 442 " + cli->getNick() + " " + chanGiven[i] + " :You're not on that channel\r\n";
+        	cli->enqueueLine(line);
+			polloutActivate(cli);
+			continue;
+		}
+		validChan.push_back(chanGiven[i]);
+	}
+	
+	
+	
+	// 8) verifier si message de depart
+	std::string message;
+	if (msg.getParams().size() >= 2)
+	{
+			message = msg.getParams()[1];
+		for (size_t i = 1; i < msg.getParams().size(); i++)
+		{
+			std::string message;
+			message = message + " " + msg.getParams()[i];
+		}
+		if (message[0] != ':') // pas le bon format on ignore
+			message.clear();
+	}
+	
+    
     // 3) Pour chaque channel :
-    //      - Vérifier existence → sinon 403
-    //      - Vérifier appartenance → sinon 442
     //      - Sinon : retirer le client, informer le channel
     //      - Si channel vide → le supprimer
 }
-
 //PRIVMSG
 bool	server::handlePrivmsg(client* cli, message& msg)
 {
