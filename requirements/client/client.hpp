@@ -27,7 +27,7 @@ class client
 
 		client(void);
 
-	public :
+		public :
 
 		client(int clientFd);
 		client(const client& copy);
@@ -65,8 +65,8 @@ class client
 		void 						setBytesSent(size_t value);
 		double						getTime() const;
 
-		bool						operator==(client& rhs);
-		bool						operator!=(client& rhs);
+		bool						operator==(const client& rhs) const;
+		bool						operator!=(const client& rhs) const;
 };
 
 #endif

@@ -241,7 +241,7 @@ void server::broadcastJoin(client* cli, channel& chan)
 			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
 				cli->enqueueLine(line);
-				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor().getNick() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor()->getNick() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
 				cli->enqueueLine(line);
 			}
 			for (std::list<client>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
@@ -472,10 +472,10 @@ bool	server::handleJoin(client* cli, message& msg)
 		return false;
 	}
 	// check if "join 0" = leave all channels;
-	if (params[0] == "0" && params.size() == 1) 
-	{			
+	if (params[0] == "0" && params.size() == 1)
+	{
 		//remove client from all channels' client lists
-		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it) 
+		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
 		{
 			message	msg;
 			msg.setParams(it->getChannelName());
@@ -603,7 +603,7 @@ bool server::handlePart(client *cli, message &msg)
         polloutActivate(cli);
         return false;
     }
-	
+
 	// 3) Découper la liste de channels
 	std::vector<std::string> chanGiven;
 	std::stringstream ss(msg.getParams()[0]);
@@ -613,16 +613,16 @@ bool server::handlePart(client *cli, message &msg)
 		if (std::find(chanGiven.begin(), chanGiven.end(), item) == chanGiven.end())
 			chanGiven.push_back(item);
 	}
-	
-	// 4) verifier si vecteur vide 
+
+	// 4) verifier si vecteur vide
 	if (chanGiven.empty())
 	{
 	    std::string line = ":" + _serverName + " 461 " + cli->getNick() + " PART" + " :Not enough parameters\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
-        return false;	
+        return false;
 	}
-	
+
 	// 5) verifier mask + channel existe + appartenance au channel
 	std::vector<std::string> validChan;
 	for (size_t i = 0; i < chanGiven.size(); ++i)
@@ -636,13 +636,13 @@ bool server::handlePart(client *cli, message &msg)
 		}
 
 		if(std::find(_channels.begin(), _channels.end(), chanGiven[i]) == _channels.end())
-		{	
+		{
         	std::string line = ":" + this->_serverName + " 403 " + cli->getNick() + " " + chanGiven[i] + " :No such channel\r\n";
         	cli->enqueueLine(line);
 			polloutActivate(cli);
 			continue;
 		}
-	
+
 		std::list<channel>::iterator itChan = std::find(this->_channels.begin(), this->_channels.end(), chanGiven[i]);
 		if (channelHasFd(*itChan, cli->getFd()) == false)
 		{
@@ -653,9 +653,9 @@ bool server::handlePart(client *cli, message &msg)
 		}
 		validChan.push_back(chanGiven[i]);
 	}
-	
-	
-	
+
+
+
 	// 8) verifier si message de depart
 	std::string message;
 	if (msg.getParams().size() >= 2)
@@ -669,11 +669,12 @@ bool server::handlePart(client *cli, message &msg)
 		if (message[0] != ':') // pas le bon format on ignore
 			message.clear();
 	}
-	
-    
+
+
     // 3) Pour chaque channel :
     //      - Sinon : retirer le client, informer le channel
     //      - Si channel vide → le supprimer
+	return true; //ajout de Daryl juste pour compile
 }
 //PRIVMSG
 bool	server::handlePrivmsg(client* cli, message& msg)
