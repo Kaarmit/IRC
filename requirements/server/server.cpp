@@ -98,29 +98,6 @@ char*	server::getPort() const
 
 /*--------------------CMD DU SERVER----------------*/
 
-// user/nick/jsp deja pris ?
-bool	server::isTaken(message& msg)
-{
-	if (msg.getParams()[0] == "USER")
-	{
-		for (std::list<client>::iterator it = this->_clients.begin(); it != this->_clients.end(); it++)
-		{
-			if (msg.getParams()[0] == it->getUser())
-
-				return true;
-		}
-	}
-	else if (msg.getParams()[0] == "NICK")
-	{
-		for (std::list<client>::iterator it = this->_clients.begin(); it != this->_clients.end(); it++)
-		{
-			if (msg.getParams()[0] == it->getNick())
-
-				return true;
-		}
-	}
-	return false;
-}
  /*-------------------UTILS------------------------*/
 
 static bool isSpecial(char c)
@@ -153,8 +130,7 @@ static bool isValidNick(const std::string& s)
 
 static bool isSpecialUser(char c)
 {
-	(void)c;
-	return true;
+	return c == '-' || c == '_' || c == '.';
 }
 
 static bool isValidUsername(const std::string& s)
@@ -611,10 +587,24 @@ bool	server::handleJoin(client* cli, message& msg)
 }
 
 //PART
-bool	server::handlePart(client* cli, message& msg)
+bool server::handlePart(client *cli, message &msg)
 {
-	(void)cli; (void)msg;
-	return true;
+    // 1) Pas de paramètre → erreur 461
+	    if (msg.getParams().empty())
+    {
+        std::string line = ":" + _serverName + " 461 " + cli->getNick() + " PART" + " :Not enough parameters\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+	
+	
+    // 2) Découper la liste de channels
+    // 3) Pour chaque channel :
+    //      - Vérifier existence → sinon 403
+    //      - Vérifier appartenance → sinon 442
+    //      - Sinon : retirer le client, informer le channel
+    //      - Si channel vide → le supprimer
 }
 
 //PRIVMSG
