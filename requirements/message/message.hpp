@@ -26,6 +26,7 @@ public:
 	std::string						getCommand(void) const;
 	std::string						toIrcLine(void) const;
 	std::vector<std::string>		getParams(void) const;
+	std::vector<std::string>&		getParams(void);
 	void							setParams(std::string input);
 	void							setPrefix(std::string input);
 	void							setCommand(std::string input);

@@ -61,6 +61,10 @@ std::vector<std::string>		message::getParams(void) const {
 	return (this->_params);
 }
 
+std::vector<std::string>&		message::getParams(void) {
+	return (this->_params);
+}
+
 std::string						message::toIrcLine() const {
 	std::string line;
 

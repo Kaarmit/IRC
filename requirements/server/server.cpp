@@ -13,7 +13,8 @@ server::server(char* port, char* pwd): _port(port) {
 
 	std::cout << "Initialisation du Serveur IRC" << std::endl;
 	this->initCmdServer();
-	this->initServSocket(this->_port);
+	if (!this->initServSocket(this->_port))
+		return ;
 	stopSignal = 0;
 	initStopSignal();
 	std::cout << "Server pret." << std::endl;
@@ -303,22 +304,22 @@ void	server::polloutActivate(client* cli)
 bool	server::handlePass(client* cli, message& msg)
 {
 	//verif si cli deja enregistrer
-	if (cli->getRegistered())
-	{
-		std::string	error = ":" + this->_serverName + " 462 " + cli->getNick() + " :You may not register\r\n";
-		cli->enqueueLine(error);
-		polloutActivate(cli);
-		return false;
-	}
+	// if (!cli->getRegistered())
+	// {
+	// 	std::string	error = ":" + this->_serverName + " 462 " + cli->getNick() + " :You may not register\r\n";
+	// 	cli->enqueueLine(error);
+	// 	polloutActivate(cli);
+	// 	return false;
+	// }
 
 	//verif si NICK ou USER a ete envoye avant pass
-	if (!cli->getNick().empty() || !cli->getUser().empty())
-	{
-		std::string	error = ":" + this->_serverName + " 462 * :PASS must be sent before NICK/USER \r\n";
-		cli->enqueueLine(error);
-		polloutActivate(cli);
-		return false;
-	}
+	// if (!cli->getNick().empty() || !cli->getUser().empty())
+	// {
+	// 	std::string	error = ":" + this->_serverName + " 462 * :PASS must be sent before NICK/USER \r\n";
+	// 	cli->enqueueLine(error);
+	// 	polloutActivate(cli);
+	// 	return false;
+	// }
 	//verif si on a tout les params dans PASS
 	if(msg.getParams().empty())
 	{
@@ -336,9 +337,11 @@ bool	server::handlePass(client* cli, message& msg)
 		return false;
 	}
 	//si tout opk, on set le pass a true ou return true
-	cli->setPass(msg.getParams()[0]);
+	cli->setPass(msg.getParams()[0]);//enlever?
+	cli->setRegistered(true);
 	std::string passSet = ":" + this->_serverName + " User password has been set\r\n";
 	cli->enqueueLine(passSet);
+	polloutActivate(cli);
 	return true;
 }
 
@@ -866,7 +869,8 @@ int	createServSocket(char* port) {
 	status = getaddrinfo(NULL, port, &hints, &res);
 	if (status != 0) {
 		fprintf(stderr, "Erreur de getaddrinfo(): %s\n", gai_strerror(status));
-		exit(1);
+		freeaddrinfo(res);
+		return (-1);
 	}
 
 	//creer un socket avec : domain(famille d'addresses) = ipv6, type(de communication) = tcp, protocol = default
@@ -874,7 +878,7 @@ int	createServSocket(char* port) {
 	if (serverFd < 0) {
 		fprintf(stderr, "Erreur de socket(): %s\n", strerror(errno));
 		freeaddrinfo(res);
-		exit(1);
+		return (-1);
 	}
 	//on rend le serverFd non bloquant
 	int flag = fcntl(serverFd, F_GETFL, 0);
@@ -882,13 +886,13 @@ int	createServSocket(char* port) {
 		fprintf(stderr, "Erreur de fcntl() getfl: %s\n", strerror(errno));
 		freeaddrinfo(res);
 		close(serverFd);
-		exit(1);
+		return (-1);
 	}
 	if (fcntl(serverFd, F_SETFL, flag | O_NONBLOCK) < 0) {
 		fprintf(stderr, "Erreur de fcntl() setfl: %s\n", strerror(errno));
 		freeaddrinfo(res);
 		close(serverFd);
-		exit(1);
+		return (-1);
 	}
 	//on configure des options sur le socket serverFd
 	//le niveau de l'option est SOL_SOCKET, niveau general du socket, TCP/IP ici
@@ -900,7 +904,7 @@ int	createServSocket(char* port) {
 		fprintf(stderr, "Erreur de setsockopt() reuse: %s\n", strerror(errno));
 		freeaddrinfo(res);
 		close(serverFd);
-		exit(1);
+		return (-1);
 	}
 	//autorise le socket ipv6 a accepter aussi les connexions ipv4
 	//permet d'avoir un seul socket pour deux protocoles
@@ -908,21 +912,21 @@ int	createServSocket(char* port) {
 		fprintf(stderr, "Erreur de setsockopt() IPv6_only off: %s\n", strerror(errno));
 		freeaddrinfo(res);
 		close(serverFd);
-		exit(1);
+		return (-1);
 	}
 	//on bind le socket a l'addresse qu'on a trouve (“assigning a name to a socket”)
 	if (bind(serverFd, res->ai_addr, res->ai_addrlen) < 0) {
 		fprintf(stderr, "Erreur de bind(): %s\n", strerror(errno));
 		freeaddrinfo(res);
 		close(serverFd);
-		exit(1);
+		return (-1);
 	}
 	//on free le res et derniere verif
 	freeaddrinfo(res);
 	if (serverFd < 0) {
 		fprintf(stderr, "Erreur: socket corrompu");
 		close(serverFd);
-		exit(1);
+		return (-1);
 	}
 	//on met le socket en mode ecoute
 	//creer une liste d'attente pour les connexions avec le max de personne dans la queue
@@ -930,16 +934,19 @@ int	createServSocket(char* port) {
 	{
 		fprintf(stderr, "Erreur de listen(): %s\n", strerror(errno));
 		close(serverFd);
-		exit(1);
+		return (-1);
 	}
 
 	std::cout << "Serveur en ecoute sur le port " << port << std::endl;
 	return serverFd;
 }
 
-void	server::initServSocket(char* port)
+bool	server::initServSocket(char* port)
 {
 	this->_serverFd = createServSocket(port);
+	if (this->_serverFd == -1)
+		return false;
+	return true;
 }
 
 /*---------------------------------------*/
@@ -1011,7 +1018,8 @@ bool	parsing(client* c, std::string rawMsg) {
 
 	c->getMessage().clearMessage();
 	size_t len = rawMsg.size();
-	if (len > 512 || (rawMsg.find("\r\n") != (len-2)))
+	// if (len > 512 || (rawMsg.find("\r\n") != (len-2)))
+	if (len > 512)
 		return (false);
 	if (rawMsg[0] == ':') {
 		ss >> prfx;
@@ -1025,11 +1033,12 @@ bool	parsing(client* c, std::string rawMsg) {
 		if (prm[0] == ':') {
 			std::string	sentence = prm.substr(1);
 			while (ss >> prm)
-				sentence.append(" " + prm);
+			sentence.append(" " + prm);
 			c->getMessage().setParams(sentence);
 			break ;
 		}
 		c->getMessage().setParams(prm);
+		std::cout << "prm du msg dans parsing: " << c->getMessage().getParams()[0] << std::endl;
 		prm.clear();
 	}
 	if (!checkCommand(c) || !checkParams(c))
@@ -1095,13 +1104,14 @@ void server::run()
 
     while (true)
 	{
+
 		if (stopSignal)
 		{
 			//close tous les fds
 			closeAllFds(this->_fds);
 			return ;
 		}
-        int fdReady = poll(&pollingRequestServ, this->_fds.size(), 100);
+        int fdReady = poll(this->_fds.data(), this->_fds.size(), 100);
         if (fdReady == -1 && errno != EINTR)
 		{
 			std::cerr << "Erreur poll():" << strerror(errno) << std::endl;
@@ -1109,6 +1119,7 @@ void server::run()
 			closeAllFds(this->_fds);
 			return;
         }
+		// std::cout << "LOG: " << fdReady << std::endl;
         if (fdReady <= 0)
 			continue;
 		for (std::vector<pollfd>::iterator itPollFd = this->_fds.begin(); itPollFd != this->_fds.end(); ++itPollFd)
@@ -1129,6 +1140,7 @@ void server::run()
     		}
 			if (itPollFd->revents & POLLIN)
 			{
+				std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
                 if (itPollFd == this->_fds.begin()) // signal sur socket serv = nouvelle(s) connexion(s) client
 				{
 					while (true) // en 'rafale'
@@ -1166,11 +1178,11 @@ void server::run()
                 else
 				{ // signal sur un socket client
                     std::cout << "Message du client fd=" << itPollFd->fd << std::endl;
-                    char buffer[513];
+                    char bufferRecv[513];
                     int ret;
                     do
 					{
-                        ret = recv(itPollFd->fd, buffer, sizeof(buffer) - 1, 0);
+                        ret = recv(itPollFd->fd, bufferRecv, sizeof(bufferRecv) - 1, 0);
                     } while (ret == -1 && errno == EINTR);
                     switch (ret)
 					{
@@ -1183,18 +1195,23 @@ void server::run()
                             toRemove.push_back(itPollFd->fd);
                             break;
                         default: // message
-                            buffer[ret] = '\0';
-                            //si le parsing est bon
-                            std::string fragment(buffer);
-                            if (!fragment.find("\r\n"))
-                            	itClient->getFullMessage().append(" " + fragment);
-                            else
+                            bufferRecv[ret] = '\0';
+							std::string& buffer = itClient->getFullMessage();
+							buffer += std::string(bufferRecv, ret);
+							size_t pos;
+							while ((pos = buffer.find("\r\n")) != std::string::npos)
 							{
-                            	if (parsing(&(*itClient), itClient->getFullMessage()))
-								{
+							    std::string line = buffer.substr(0, pos);
+							    buffer.erase(0, pos + 2);
+							    std::cout << "Full msg: " << line << std::endl;
+
+							    if (parsing(&(*itClient), line))
+							    {
 									//on recup le message parser
 									message	msg = itClient->getMessage();
 									std::string	cmdName = msg.getCommand();
+									std::cout << "cmd du msg dans RUN: " << msg.getCommand() << std::endl;
+									std::cout << "prm du msg dans RUN: " << msg.getParams()[0] << std::endl;
 
 									//verif d'auth
 									bool	needsAuth = true;
@@ -1214,14 +1231,13 @@ void server::run()
 										bool	res;
 										res = (this->*_cmdList[cmdName])(&(*itClient), msg);
 										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
-										toRemove.push_back(itPollFd->fd);
+											toRemove.push_back(itPollFd->fd);
 									}
 									else
 									{
 										std::string	error = ":server 421 " + itClient->getNick() + " " + cmdName + " :Commande inconnue\r\n";
 										send(itClient->getFd(), error.c_str(), error.length(), 0);
 									}
-									itClient->getFullMessage().clear();
 									msg.clearMessage();
 								}
                             }
@@ -1263,6 +1279,7 @@ void server::run()
                 struct pollfd pollingRequestClient;
                 pollingRequestClient.fd = clientFd;
                 pollingRequestClient.events = POLLIN;
+                pollingRequestClient.revents = 0;
                 this->_fds.push_back(pollingRequestClient);
                 client newClient(clientFd);
                 this->_clients.push_back(newClient);

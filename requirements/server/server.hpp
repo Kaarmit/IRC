@@ -85,7 +85,7 @@ class server
 		server&			operator=(const server& rhs);
 		~server();
 
-		void			initServSocket(char* port);
+		bool			initServSocket(char* port);
 		void			run();
 
 		std::vector<struct pollfd>		getFds() const;
