@@ -11,9 +11,9 @@ int	main(int argc, char** argv)
 	server	serveur(argv[1], argv[2]);
 
 	/*-------TEST-------------*/
-	std::cout << serveur.getPassWord() << std::endl;
-	std::cout << serveur.getServerFd() << std::endl;
-	std::cout << serveur.getPort() << std::endl;
+	// std::cout << serveur.getPassWord() << std::endl;
+	// std::cout << serveur.getServerFd() << std::endl;
+	// std::cout << serveur.getPort() << std::endl;
 	/*-----------------------*/
 	return 0;
 }
