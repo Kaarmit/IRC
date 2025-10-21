@@ -3,7 +3,6 @@
 
 channel::channel(void)
 {
-	return;
 }
 
 channel::channel(std::string name, client& creator)
@@ -18,6 +17,7 @@ channel::channel(std::string name, client& creator)
 	this->_invitedList.clear();
 	this->_key.clear();
 	this->_operatorsList.push_back(creator);
+	this->_topicWho = NULL;
 	return;
 }
 
@@ -91,12 +91,12 @@ void					channel::setTopic(std::string newTopic)
 	this->_topic = newTopic;
 }
 
-client					channel::getTopicAuthor(void) const
+client*					channel::getTopicAuthor(void) const
 {
 	return (this->_topicWho);
 }
 
-void					channel::setTopicAuthor(client& newAuthor)
+void					channel::setTopicAuthor(client* newAuthor)
 {
 	this->_topicWho = newAuthor;
 }
@@ -168,22 +168,20 @@ std::list<client> 		channel::getOpList(void) const
 	return (this->_operatorsList);
 }
 
-bool					channel::operator==(channel& rhs)
+bool					channel::operator==(const std::string& rhs) const
 {
-	if (this == &rhs || this->_name == rhs.getChannelName())
-		return (true);
-	return (false);
+	return this->_name == rhs;
 }
 
-bool					channel::operator!=(channel& rhs)
+bool					channel::operator!=(const channel& rhs) const
 {
-	return (!(*this == rhs));
+	return (!(*this == rhs.getChannelName()));
 }
 
 bool	channel::isMember(client* cli) const
 {
 	std::list<client>::const_iterator	itStr;
-	itStr = std::find(this->_clientsList.begin(), this->_clientsList.end(), (*cli).getNick());
+	itStr = std::find(this->_clientsList.begin(), this->_clientsList.end(), *cli);
 	if (itStr == this->_clientsList.end())
 		return false;
 	return true;

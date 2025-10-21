@@ -14,7 +14,11 @@ message::message(message const & copy) {
 message& message::operator=(message const & rhs) {
 	// std::cout << "message copy assignment operator called" << std::endl;
 	if (this != &rhs)
-		// this->... = rhs.get..();
+	{
+		this->_command = rhs.getCommand();
+		this->_prefix = rhs.getPrefix();
+		this->_params = rhs.getParams();
+	}
 	return (*this);
 }
 
@@ -40,7 +44,7 @@ void		message::setParams(std::string input) {
 void		message::clearMessage(void) {
 	this->_prefix.clear();
 	this->_command.clear();
-	for (std::vector<std::string>::iterator it = this->_params.begin(); it != this->_params.end(); it++) 
+	for (std::vector<std::string>::iterator it = this->_params.begin(); it != this->_params.end(); it++)
 		(*it).clear();
 	return ;
 }
@@ -59,19 +63,19 @@ std::vector<std::string>		message::getParams(void) const {
 
 std::string						message::toIrcLine() const {
 	std::string line;
-	
-	if (!_prefix.empty()) 
+
+	if (!_prefix.empty())
 		line += ":" + _prefix + " ";
 	line += _command;
-	
+
 	for (size_t i = 0; i < _params.size(); ++i) {
-		if (i + 1 == _params.size()) 
+		if (i + 1 == _params.size())
 			line += " :" +_params[i];
 		else
 			line += " " + _params[i];
 	}
 	line += "\r\n";
-	
+
 	if (line.size() > 512) {
 		line.resize(510);
 		line += "\r\n";
