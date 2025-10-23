@@ -8,7 +8,7 @@ channel::channel(void)
 channel::channel(std::string name, client& creator)
 {
 	this->_name = name;
-	this->_clientsList.push_back(creator);
+	this->_clientsList.push_back(&creator);
 	this->_topicStatus = false;
 	this->_topic.clear();
 	this->_topicTimeStamp = 0;
@@ -16,33 +16,42 @@ channel::channel(std::string name, client& creator)
 	this->_inviteOnly = false;
 	this->_invitedList.clear();
 	this->_key.clear();
-	this->_operatorsList.push_back(creator);
+	this->_operatorsList.push_back(&creator);
 	this->_topicWho.clear();
 	return;
 }
 
 channel::channel(channel const & copy)
 {
-	*this = copy;
-	return;
+    this->_name = copy._name;
+    this->_clientsList = copy._clientsList;
+    this->_topicStatus = copy._topicStatus;
+    this->_topic = copy._topic;
+    this->_topicWho = copy._topicWho;
+    this->_topicTimeStamp = copy._topicTimeStamp;
+    this->_limit = copy._limit;
+    this->_inviteOnly = copy._inviteOnly;
+    this->_invitedList = copy._invitedList;
+    this->_key = copy._key;
+    this->_operatorsList = copy._operatorsList;
 }
 
-channel& 		channel::operator=(channel const & rhs)
+channel& channel::operator=(channel const & rhs)
 {
-	if (this != &rhs) {
-		this->_name = rhs.getChannelName();
-		this->_clientsList = rhs.getClientList();
-		this->_topicStatus = rhs.isRestrictedTopic();
-		this->_topic = rhs.getTopic();
-		this->_topicWho = rhs.getTopicAuthor();
-		this->_topicTimeStamp = rhs.getTopicTimestamp();
-		this->_limit = rhs.getLimit();
-		this->_inviteOnly = rhs.isInviteOnly();
-		this->_invitedList = rhs.getInvitedList();
-		this->_key = rhs.getKey();
-		this->_operatorsList = rhs.getOpList();
-	}
-	return (*this);
+    if (this != &rhs) {
+        this->_name = rhs._name;
+        this->_clientsList = rhs._clientsList;
+        this->_topicStatus = rhs._topicStatus;
+        this->_topic = rhs._topic;
+        this->_topicWho = rhs._topicWho;
+        this->_topicTimeStamp = rhs._topicTimeStamp;
+        this->_limit = rhs._limit;
+        this->_inviteOnly = rhs._inviteOnly;
+        this->_invitedList = rhs._invitedList;
+        this->_key = rhs._key;
+        this->_operatorsList = rhs._operatorsList;
+    }
+    return *this;
 }
 
 channel::~channel(void)
@@ -61,14 +70,14 @@ void					channel::setChannelName(std::string newName)
 	return ;
 }
 
-std::list<client>&		channel::getClientList(void)
+std::list<client*>&		channel::getClientList(void)
 {
-	return (this->_clientsList);
+	return this->_clientsList;
 }
 
-std::list<client> 		channel::getClientList(void) const
+const std::list<client*>&		channel::getClientList(void) const
 {
-	return (this->_clientsList);
+	return this->_clientsList;
 }
 
 bool					channel::isRestrictedTopic(void) const
@@ -138,12 +147,7 @@ void					channel::setInviteOnly(bool newStatus)
 	this->_inviteOnly = newStatus;
 }
 
-std::list<client>&		channel::getInvitedList(void)
-{
-	return (this->_invitedList);
-}
-
-std::list<client> 		channel::getInvitedList(void) const
+std::list<client*>&		channel::getInvitedList(void)
 {
 	return (this->_invitedList);
 }
@@ -158,12 +162,7 @@ void					channel::setKey(std::string newKey)
 	this->_key = newKey;
 }
 
-std::list<client>&		channel::getOpList(void)
-{
-	return (this->_operatorsList);
-}
-
-std::list<client> 		channel::getOpList(void) const
+std::list<client*>&		channel::getOpList(void)
 {
 	return (this->_operatorsList);
 }
@@ -180,9 +179,5 @@ bool					channel::operator!=(const channel& rhs) const
 
 bool	channel::isMember(client* cli) const
 {
-	std::list<client>::const_iterator	itStr;
-	itStr = std::find(this->_clientsList.begin(), this->_clientsList.end(), *cli);
-	if (itStr == this->_clientsList.end())
-		return false;
-	return true;
+	return std::find(this->_clientsList.begin(), this->_clientsList.end(), cli) != this->_clientsList.end();
 }

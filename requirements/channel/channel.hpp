@@ -12,16 +12,16 @@ class channel
 {
 	private:
 		std::string				_name;
-		std::list<client>		_clientsList;
+		std::list<client*>		_clientsList;
 		bool					_topicStatus;
 		std::string				_topic;
 		std::string				_topicWho;
 		time_t					_topicTimeStamp;
 		int						_limit;
 		bool					_inviteOnly;
-		std::list<client>		_invitedList;
+		std::list<client*>		_invitedList;
 		std::string				_key;
-		std::list<client>		_operatorsList;
+		std::list<client*>		_operatorsList;
 		channel(void);
 
 	public:
@@ -34,33 +34,34 @@ class channel
 		std::string				getChannelName(void) const;
 		void					setChannelName(std::string newName);
 
-		std::list<client>&		getClientList(void);
-		std::list<client>		getClientList(void) const;
+		std::list<client*>&		getClientList(void);
+		const std::list<client*>&		getClientList(void) const;
 
 		bool					isRestrictedTopic(void) const;
 		void					setRestrictedTopic(bool newStatus);
 
 		std::string				getTopic(void) const;
 		void					setTopic(std::string newTopic);
+
 		std::string				getTopicAuthor(void) const;
 		void					setTopicAuthor(std::string newAuthor);
+
 		time_t					getTopicTimestamp(void) const;
 		std::string				getTopicTimestampStr(void) const;
 		void					setTopicTimestamp(void);
+
 		int						getLimit(void) const;
 		void					setLimit(int newLimit);
 
 		bool					isInviteOnly(void) const;
 		void					setInviteOnly(bool newStatus);
 
-		std::list<client>&		getInvitedList(void);
-		std::list<client>		getInvitedList(void) const;
+		std::list<client*>&		getInvitedList(void);
 
 		std::string				getKey(void) const;
 		void					setKey(std::string newKey);
 
-		std::list<client>&		getOpList(void);
-		std::list<client>		getOpList(void) const;
+		std::list<client*>&		getOpList(void);
 
 		bool						operator==(const std::string& rhs) const;
 		bool						operator!=(const channel& rhs) const;
