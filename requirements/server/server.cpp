@@ -1218,7 +1218,8 @@ void server::run()
 			continue;
 		for (std::vector<pollfd>::iterator itPollFd = this->_fds.begin(); itPollFd != this->_fds.end(); ++itPollFd)
 		{
-			std::list<client*>::iterator itClient = findClientByFd(this->_clients, itPollFd->fd); // trouve le client a partir du fd dans la liste des clients sinon retourne .end()
+			client* itClient = this->getClientByF(itPollFd->fd);//remplacer par ca pour ne pas utiliser un iterator (?)
+			// std::list<client*>::iterator itClient = findClientByFd(this->_clients, itPollFd->fd); // trouve le client a partir du fd dans la liste des clients sinon retourne .end()
 			if (itPollFd->revents & (POLLERR | POLLHUP | POLLNVAL))
     		{
 				if (itPollFd == this->_fds.begin()) // erreur sur le socket serv
