@@ -23,21 +23,24 @@ server::server(char* port, char* pwd): _port(port) {
 
 server::server(const server& copy)
 {
-	*this = copy;
+	// *this = copy;
+	(void)copy;
+	return;
 }
 
 server&			server::operator=(const server& rhs)
 {
-	if (this != &rhs)
-	{
-		this->_fds = rhs._fds;
-		this->_clients = rhs._clients;
-		this->_channels = rhs._channels;
-		this->_cmdList = rhs._cmdList;
-		this->_passWord = rhs._passWord;
-		this->_serverFd = rhs._serverFd;
-		this->_port = rhs._port;
-	}
+	// if (this != &rhs)
+	// {
+	// 	this->_fds = rhs._fds;
+	// 	this->_clients = rhs._clients;
+	// 	this->_channels = rhs._channels;
+	// 	this->_cmdList = rhs._cmdList;
+	// 	this->_passWord = rhs._passWord;
+	// 	this->_serverFd = rhs._serverFd;
+	// 	this->_port = rhs._port;
+	// }
+	(void)rhs;
 	return (*this);
 }
 
@@ -144,13 +147,22 @@ static bool isSpecialUser(char c)
 static bool isValidUsername(const std::string& s)
 {
 	if (s.empty())
+	{
+		// std::cout << "LOG: s empty()" << std::endl;
 		return false;
-	if (s.size() > 10)
+	}
+	if (s.size() > 25)//ici c'est 10 mais j'ai change sinon Daryl Avril ne passe pas
+	{
+		// std::cout << "LOG: s > 10" << std::endl;
 		return false;
+	}
 	for (size_t i = 0; i < s.size(); i++)
 	{
-		if(!isSpecialUser(s[i]) &&  !isalnum(s[i])) //creer isspecialUser() juste au dessus
+		if(!isSpecialUser(s[i]) && !isalnum(s[i])) //creer isspecialUser() juste au dessus
+		{
+			// std::cout << "LOG: s dans for()" << std::endl;
 			return false;
+		}
 	}
 	return true;
 
@@ -158,10 +170,10 @@ static bool isValidUsername(const std::string& s)
 
 static bool channelHasFd(const channel& ch, int fd)
 {
-    std::list<client> lst = ch.getClientList();
-    for (std::list<client>::const_iterator it = lst.begin(); it != lst.end(); ++it)
+    std::list<client*> lst = ch.getClientList();
+    for (std::list<client*>::const_iterator it = lst.begin(); it != lst.end(); ++it)
 	{
-        if (it->getFd() == fd)
+        if ((*it)->getFd() == fd)
 			return true;
     }
     return false;
@@ -229,14 +241,14 @@ void server::broadcastNickChange(client* cli, const std::string& oldNick, const 
 
 void server::broadcastJoin(client* cli, channel& chan)
 {
-	std::list<client> chanCL = chan.getClientList();
+	std::list<client*> chanCL = chan.getClientList();
 	std::string line;
-    for (std::list<client>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan)
+    for (std::list<client*>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan)
 	{
-		polloutActivate(&(*itChan));
+		polloutActivate(*itChan);
 		line = userPrefix(cli) + " JOIN :" + chan.getChannelName() + "\r\n";
-		itChan->enqueueLine(line);
-        if (itChan->getFd() == cli->getFd())
+		(*itChan)->enqueueLine(line);
+        if ((*itChan)->getFd() == cli->getFd())
 		{
 			if (!chan.getTopic().empty())
 			{
@@ -245,10 +257,10 @@ void server::broadcastJoin(client* cli, channel& chan)
 				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
 				cli->enqueueLine(line);
 			}
-			for (std::list<client>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
+			for (std::list<client*>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
 			{
 				line = this->_serverName + " 353 " + cli->getNick() + " = " + chan.getChannelName() + ":";
-				std::string present = itPrint->getNick();
+				std::string present = (*itPrint)->getNick();
 				if (std::find(chan.getOpList().begin(), chan.getOpList().end(), *itPrint) != chan.getOpList().end())
 					present.insert(present.begin(), '@');
 				line.append(" " + present);
@@ -326,6 +338,7 @@ bool	server::handlePass(client* cli, message& msg)
 		std::string	error = ":" + this->_serverName + " 461 * :Not enough parameters\r\n";
 		cli->enqueueLine(error);
 		polloutActivate(cli);
+		// std::cout << "LOG: return false dans pass() a la verif 1" << std::endl;
 		return false;
 	}
 	//verif du mdp
@@ -333,6 +346,7 @@ bool	server::handlePass(client* cli, message& msg)
 	{
 		std::string	error = ":" + this->_serverName + " 464 * :Password incorrect\r\n";
 		cli->enqueueLine(error);
+		// std::cout << "LOG: return false dans pass() a la verif 2" << std::endl;
 		polloutActivate(cli);
 		return false;
 	}
@@ -342,6 +356,7 @@ bool	server::handlePass(client* cli, message& msg)
 	std::string passSet = ":" + this->_serverName + " User password has been set\r\n";
 	cli->enqueueLine(passSet);
 	polloutActivate(cli);
+	// std::cout << "LOG: TA GRAND MERE PASSe DANS PASSE" << std::endl;
 	return true;
 }
 
@@ -356,10 +371,11 @@ bool server::handleNick(client* cli, message& msg)
         std::string line = ":" + _serverName + " 431 " + target + " :No nickname given\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
+		// std::cout << "LOG: return false dans nick() a la verif 1" << std::endl;
         return false;
     }
 
-    const std::string requested = msg.getParams()[0];
+    const std::string requested = msg.getParams().back();
 
     // 2) Format invalide
     if (!isValidNick(requested))
@@ -367,6 +383,7 @@ bool server::handleNick(client* cli, message& msg)
         std::string line = ":" + _serverName + " 432 " + target + " " + requested + " :Erroneous nickname\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
+		// std::cout << "LOG: return false dans nick() a la verif 2" << std::endl;
         return false;
     }
 
@@ -376,6 +393,7 @@ bool server::handleNick(client* cli, message& msg)
         std::string line = ":" + _serverName + " 433 " + target + " " + requested + " :Nickname is already in use\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
+		// std::cout << "LOG: return false dans nick() a la verif 3" << std::endl;
         return false;
     }
 
@@ -391,6 +409,7 @@ bool server::handleNick(client* cli, message& msg)
     if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
 		sendWelcomeIfRegistrationComplete(cli);
 
+	// std::cout << "LOG: TA GRAND MERE PASSe DANS NICK" << std::endl;
     return true;
 }
 
@@ -405,6 +424,7 @@ bool	server::handleUser(client* cli, message& msg)
 		std::string line = ":" + _serverName + " 462 " + target + " :You may not reregister\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
+		// std::cout << "LOG: return false dans user() a la verif 1" << std::endl;
         return false;
 	}
 
@@ -414,10 +434,15 @@ bool	server::handleUser(client* cli, message& msg)
         std::string line = ":" + _serverName + " 461 " + target + " USER" + " :Not enough parameters\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
+		// std::cout << "LOG: return false dans user() a la verif 2" << std::endl;
         return false;
     }
 
 	const std::string username = msg.getParams()[0];
+	// std::cout << "LOG: username: " << username << std::endl;
+	// std::cout << "LOG: hostname: " << msg.getParams()[1] << std::endl;
+	// std::cout << "LOG: servername: " << msg.getParams()[2] << std::endl;
+	// std::cout << "LOG: realname: " << msg.getParams()[3] << std::endl;
 
     // 3) Format invalide
     if (!isValidUsername(username))
@@ -425,6 +450,7 @@ bool	server::handleUser(client* cli, message& msg)
         std::string line = ":" + _serverName + " 468 " + target +  " :Erroneous username\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
+		// std::cout << "LOG: return false dans user() a la verif 3" << std::endl;
         return false;
     }
 
@@ -443,7 +469,7 @@ bool	server::handleUser(client* cli, message& msg)
 
 	if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
 		sendWelcomeIfRegistrationComplete(cli);
-
+	// std::cout << "LOG: TA GRAND MERE PASSe DANS USER" << std::endl;
     return true;
 
 }
@@ -541,8 +567,8 @@ bool	server::handleJoin(client* cli, message& msg)
 				//check if client is invited
 				if (itChan->isInviteOnly())
 				{
-					std::list<client> invitedList = itChan->getInvitedList();
-					if (std::find(invitedList.begin(), invitedList.end(), *cli) == invitedList.end())
+					std::list<client*>& invitedList = itChan->getInvitedList();
+					if (std::find(invitedList.begin(), invitedList.end(), cli) == invitedList.end())
 					{
 						//not invited can't enter
 						polloutActivate(cli);
@@ -554,7 +580,7 @@ bool	server::handleJoin(client* cli, message& msg)
 				//check if theres a channel key/password
 				if (!itChan->getKey().empty())
 				{
-					if (keysGiven.empty() || itChan->getKey().compare(keysGiven[i]) != 0)
+					if (i >= keysGiven.size() || keysGiven.empty() || itChan->getKey().compare(keysGiven[i]) != 0)
 					{
 						polloutActivate(cli);
         				std::string line = ":" + this->_serverName + " 475 " + cli->getNick() + " " + chanGiven[i] + " :Invalid key\r\n";
@@ -575,11 +601,12 @@ bool	server::handleJoin(client* cli, message& msg)
 				}
 				// if client got invited, remove him from the invited list
 				if (!itChan->getInvitedList().empty())
-					itChan->getInvitedList().remove(*cli);
+					itChan->getInvitedList().remove(cli);
 				//add the channel to the client's channel list
-				cli->getChannelList().push_back(params[0]);
+				// cli->getChannelList().push_back(params[0]); DARYL:j'ai mis en com
+				cli->getChannelList().push_back(chanGiven[i]);
 				//add the client to the channel's client list
-				itChan->getClientList().push_back(*cli);
+				itChan->getClientList().push_back(cli);
 				broadcastJoin(cli, *itChan);
 			}
 		}
@@ -764,16 +791,16 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 			return false;
 		}
 		//construiruction du message
-		std::string	toSend = userPrefix(cli) + msg.getCommand() + params[0] + " :" + params[1];
+		std::string	toSend = userPrefix(cli) + " " + msg.getCommand() + " " + params[0] + " " + " :" + params[1];
 		//envoie du message au destinataire
 		//on boucle sur tous les membres du channel
-		for (std::list<client>::iterator it = destChannel->getClientList().begin(); it != destChannel->getClientList().end(); it++)
+		for (std::list<client*>::iterator it = destChannel->getClientList().begin(); it != destChannel->getClientList().end(); it++)
 		{
 			//on envoie a tous sauf le cli
-			if (it->getFd() == cli->getFd())
+			if ((*it)->getFd() == cli->getFd())
 				continue;
-			it->enqueueLine(toSend);
-			polloutActivate(&(*it));
+			(*it)->enqueueLine(toSend);
+			polloutActivate(*it);
 		}
 	}
 	return true;
@@ -806,6 +833,9 @@ bool	server::handleMode(client* cli, message& msg)
 bool	server::handlePing(client* cli, message& msg)
 {
 	(void)cli; (void)msg;
+	std::string	pong = "pong";
+	cli->enqueueLine(pong);
+	polloutActivate(cli);
 	return true;
 }
 //QUIT
@@ -829,6 +859,19 @@ bool	server::handleWho(client* cli, message& msg)
 	return true;
 }
 
+//LOG
+bool	server::handleLog(client* cli, message& msg)
+{
+	(void)cli; (void)msg;
+	std::cout << "----LOG----" << std::endl;
+	std::cout << "Clients enregistres: " << std::endl;
+	for (std::list<client>::iterator it = this->_clients.begin(); it != this->_clients.end(); it++)
+	{
+		std::cout << it->getNick() << std::endl;
+	}
+	return true;
+}
+
 void	server::initCmdServer()
 {
 	this->_cmdList["PASS"] = &server::handlePass;
@@ -836,6 +879,15 @@ void	server::initCmdServer()
 	this->_cmdList["USER"] = &server::handleUser;
 	this->_cmdList["JOIN"] = &server::handleJoin;
 	this->_cmdList["PRIVMSG"] = &server::handlePrivmsg;
+	this->_cmdList["PING"] = &server::handlePing;
+	this->_cmdList["MODE"] = &server::handleMode;
+	this->_cmdList["INVITE"] = &server::handleInvite;
+	this->_cmdList["KICK"] = &server::handleKick;
+	this->_cmdList["PART"] = &server::handlePart;
+	this->_cmdList["QUIT"] = &server::handleQuit;
+	this->_cmdList["TOPIC"] = &server::handleTopic;
+	this->_cmdList["WHO"] = &server::handleWho;
+	this->_cmdList["LOG"] = &server::handleLog;//test opur afficher des logs
 }
 
 /*-------------------------------------------------*/
@@ -1004,8 +1056,7 @@ bool	checkCommand(client* c) {
 }
 
 bool	checkParams(client* c) {
-	std::vector<std::string> prms = c->getMessage().getParams();
-	if (prms.size() > 15)
+	if (c->getMessage().getParams().size() > 15)
 		return (false);
 	return (true);
 }
@@ -1016,6 +1067,7 @@ bool	parsing(client* c, std::string rawMsg) {
 	std::string				cmd;
 	std::string				prm;
 
+	// std::cout << "LOG: rawMsg dans parsing() avant de parser: " << rawMsg << std::endl;
 	c->getMessage().clearMessage();
 	size_t len = rawMsg.size();
 	// if (len > 512 || (rawMsg.find("\r\n") != (len-2)))
@@ -1037,8 +1089,9 @@ bool	parsing(client* c, std::string rawMsg) {
 			c->getMessage().setParams(sentence);
 			break ;
 		}
+		// std::cout << "LOG: prm avant de setParams(prm): " << prm << std::endl;
 		c->getMessage().setParams(prm);
-		std::cout << "prm du msg dans parsing: " << c->getMessage().getParams()[0] << std::endl;
+		// std::cout << "LOG: prm.back() du msg dans parsing: " << c->getMessage().getParams().back() << std::endl;
 		prm.clear();
 	}
 	if (!checkCommand(c) || !checkParams(c))
@@ -1140,7 +1193,7 @@ void server::run()
     		}
 			if (itPollFd->revents & POLLIN)
 			{
-				std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
+				// std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
                 if (itPollFd == this->_fds.begin()) // signal sur socket serv = nouvelle(s) connexion(s) client
 				{
 					while (true) // en 'rafale'
@@ -1208,10 +1261,11 @@ void server::run()
 							    if (parsing(&(*itClient), line))
 							    {
 									//on recup le message parser
-									message	msg = itClient->getMessage();
+									message&	msg = itClient->getMessage();
 									std::string	cmdName = msg.getCommand();
-									std::cout << "cmd du msg dans RUN: " << msg.getCommand() << std::endl;
-									std::cout << "prm du msg dans RUN: " << msg.getParams()[0] << std::endl;
+									// std::cout << "LOG: cmd du msg dans RUN: " << cmdName << std::endl;
+									// std::cout << "LOG: prm[0] du msg dans RUN: " << msg.getParams()[0] << std::endl;
+									// std::cout << "LOG: prm.back() du msg dans RUN: " << msg.getParams().back() << ", avec size=" << msg.getParams().size()<< std::endl;
 
 									//verif d'auth
 									bool	needsAuth = true;
@@ -1219,7 +1273,7 @@ void server::run()
 										needsAuth = false;
 									if (needsAuth && !itClient->getRegistered())
 									{
-										std::string	error = ":server 451 * :Vous n'etes pas enregistre\r\n";
+										std::string	error = ":server 451 * :Vous n'etes pas enregistre !\r\n";
 										send(itClient->getFd(), error.c_str(), error.length(), 0);
 										msg.clearMessage();
 										break;
@@ -1230,8 +1284,12 @@ void server::run()
 									{
 										bool	res;
 										res = (this->*_cmdList[cmdName])(&(*itClient), msg);
+										// std::cout << "LOG: on passe dans la verif cmd avec res= " << res << std::endl;
 										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
+										{
+											// std::cout << "LOG: on passe dans la verif PASS et !res avec cmdName:" << cmdName << "et res(true si la cmd a ete exec)= " << res << std::endl;
 											toRemove.push_back(itPollFd->fd);
+										}
 									}
 									else
 									{

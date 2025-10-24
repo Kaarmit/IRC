@@ -67,6 +67,7 @@ class server
 		bool	handlePing(client* cli, message& msg);
 		bool	handleQuit(client* cli, message& msg);
 		bool	handleWho(client* cli, message& msg);
+		bool	handleLog(client* cli, message& msg);
 		/*---*/
 
 
@@ -77,12 +78,12 @@ class server
 		/*-------*/
 
 		server(void);
+		server(const server& copy);
+		server&			operator=(const server& rhs);
 
 	public:
 
 		server(char* port, char* pwd);
-		server(const server& copy);
-		server&			operator=(const server& rhs);
 		~server();
 
 		bool			initServSocket(char* port);

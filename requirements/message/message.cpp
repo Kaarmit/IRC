@@ -44,8 +44,9 @@ void		message::setParams(std::string input) {
 void		message::clearMessage(void) {
 	this->_prefix.clear();
 	this->_command.clear();
-	for (std::vector<std::string>::iterator it = this->_params.begin(); it != this->_params.end(); it++)
-		(*it).clear();
+	this->_params.clear();
+	// for (std::vector<std::string>::iterator it = this->_params.begin(); it != this->_params.end(); it++)
+	// 	(*it).clear();
 	return ;
 }
 
