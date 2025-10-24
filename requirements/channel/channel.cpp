@@ -5,10 +5,14 @@ channel::channel(void)
 {
 }
 
-channel::channel(std::string name, client& creator)
+channel::channel(std::string name, client* creator)
 {
 	this->_name = name;
-	this->_clientsList.push_back(&creator);
+	if (creator)
+	{
+		this->_clientsList.push_back(creator);
+		this->_operatorsList.push_back(creator);
+	}
 	this->_topicStatus = false;
 	this->_topic.clear();
 	this->_topicTimeStamp = 0;
@@ -16,41 +20,18 @@ channel::channel(std::string name, client& creator)
 	this->_inviteOnly = false;
 	this->_invitedList.clear();
 	this->_key.clear();
-	this->_operatorsList.push_back(&creator);
 	this->_topicWho.clear();
 	return;
 }
 
 channel::channel(channel const & copy)
 {
-    this->_name = copy._name;
-    this->_clientsList = copy._clientsList;
-    this->_topicStatus = copy._topicStatus;
-    this->_topic = copy._topic;
-    this->_topicWho = copy._topicWho;
-    this->_topicTimeStamp = copy._topicTimeStamp;
-    this->_limit = copy._limit;
-    this->_inviteOnly = copy._inviteOnly;
-    this->_invitedList = copy._invitedList;
-    this->_key = copy._key;
-    this->_operatorsList = copy._operatorsList;
+  (void)copy;
 }
 
 channel& channel::operator=(channel const & rhs)
 {
-    if (this != &rhs) {
-        this->_name = rhs._name;
-        this->_clientsList = rhs._clientsList;
-        this->_topicStatus = rhs._topicStatus;
-        this->_topic = rhs._topic;
-        this->_topicWho = rhs._topicWho;
-        this->_topicTimeStamp = rhs._topicTimeStamp;
-        this->_limit = rhs._limit;
-        this->_inviteOnly = rhs._inviteOnly;
-        this->_invitedList = rhs._invitedList;
-        this->_key = rhs._key;
-        this->_operatorsList = rhs._operatorsList;
-    }
+   (void)rhs;
     return *this;
 }
 

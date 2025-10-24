@@ -31,8 +31,8 @@ class server
 {
 	private:
 		std::vector<struct pollfd>									_fds;
-		std::list<client>											_clients;
-		std::list<channel>											_channels;
+		std::list<client*>											_clients;
+		std::list<channel*>											_channels;
 		std::map<std::string, bool (server::*)(client*, message&)>	_cmdList;
 		std::string													_passWord;
 		std::string													_serverName;
@@ -48,7 +48,7 @@ class server
 
 		void	broadcastJoin(client* cli, channel& chan);
 
-		bool	isTaken(message& msg);
+		bool	isTaken(message& msg);//non utilise
 
 		bool	isChannel(std::string str) const;
 		/*---*/
@@ -91,13 +91,20 @@ class server
 
 		std::vector<struct pollfd>		getFds() const;
 		std::vector<struct pollfd>&		getFds();
-		std::list<client>				getClients() const;
-		std::list<client>&				getClients();
-		std::list<channel>				getChannels() const;
-		std::list<channel>&				getChannels();
+
+		std::list<client*>&				getClients();
+		const std::list<client*>&		getClients() const;
+
+		std::list<channel*>&			getChannels();
+		const std::list<channel*>&		getChannels() const;
+
 		int								getServerFd() const;
 		std::string						getPassWord() const;
 		char*							getPort() const;
+
+		client* getClientByF(int fd);
+		client* getClientByNick(const std::string& nick);
+		channel* getChannelByName(const std::string& name);
 };
 
 #endif

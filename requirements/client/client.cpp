@@ -24,28 +24,12 @@ client::client(int clientFd): _fd(clientFd) {
 
 client::client(const client& copy)
 {
-	*this = copy;
+	(void)copy;
 }
 
 client& 					client::operator=(const client& rhs)
 {
-	if (this != &rhs)
-	{
-		this->_fd = rhs.getFd();
-		this->_registered = rhs.getRegistered();
-		this->_fullMessage = rhs.getFullMessage();
-		this->_msg = rhs.getMessage();
-		this->_serverName = rhs.getServerName();
-		this->_host = rhs.getHost();
-		this->_nick = rhs.getNick();
-		this->_user = rhs.getUser();
-		this->_real = rhs.getReal();
-		this->_pass = rhs.getPass();
-		this->_outbuf = rhs.getOutbuf();
-		this->_bytesSent = rhs.getBytesSent();
-		this->_channels = rhs.getChannelList();
-		this->_connexionTime = rhs.getTime();
-	}
+	(void)rhs;
 	return (*this);
 }
 
