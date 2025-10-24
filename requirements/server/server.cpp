@@ -23,29 +23,29 @@ server::server(char* port, char* pwd): _port(port) {
 
 server::server(const server& copy)
 {
-	// *this = copy;
 	(void)copy;
 	return;
 }
 
 server&			server::operator=(const server& rhs)
 {
-	// if (this != &rhs)
-	// {
-	// 	this->_fds = rhs._fds;
-	// 	this->_clients = rhs._clients;
-	// 	this->_channels = rhs._channels;
-	// 	this->_cmdList = rhs._cmdList;
-	// 	this->_passWord = rhs._passWord;
-	// 	this->_serverFd = rhs._serverFd;
-	// 	this->_port = rhs._port;
-	// }
 	(void)rhs;
 	return (*this);
 }
 
 server::~server()
 {
+	for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+		delete *it;
+	_clients.clear();
+
+	for (std::list<channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+		delete *it;
+	_channels.clear();
+
+	for (size_t i = 0; i < _fds.size(); ++i)
+		close(_fds[i].fd);
+	_fds.clear();
 	std::cout << "Arret du server IRC, bye bye." << std::endl;
 }
 /*-------------------------*/
@@ -62,22 +62,22 @@ std::vector<struct pollfd>&		server::getFds()
 	return this->_fds;
 }
 
-std::list<client>				server::getClients() const
+std::list<client*>&				server::getClients()
 {
 	return this->_clients;
 }
 
-std::list<client>&				server::getClients()
+const std::list<client*>&				server::getClients() const
 {
 	return this->_clients;
 }
 
-std::list<channel>				server::getChannels() const
+std::list<channel*>&				server::getChannels()
 {
 	return this->_channels;
 }
 
-std::list<channel>&				server::getChannels()
+const std::list<channel*>&				server::getChannels() const
 {
 	return this->_channels;
 }
@@ -97,6 +97,35 @@ char*	server::getPort() const
 	return this->_port;
 }
 
+client* server::getClientByF(int fd)
+{
+	for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+	{
+		if ((*it)->getFd() == fd)
+			return (*it);
+	}
+	return NULL;
+}
+
+client* server::getClientByNick(const std::string& nick)
+{
+	for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+	{
+		if ((*it)->getNick() == nick)
+			return (*it);
+	}
+	return NULL;
+}
+
+channel* server::getChannelByName(const std::string& name)
+{
+	for (std::list<channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+	{
+		if ((*it)->getChannelName() == name)
+			return (*it);
+	}
+	return NULL;
+}
 /*-------------------------*/
 
 
@@ -134,8 +163,8 @@ static bool isValidNick(const std::string& s)
 
 // user/nick/jsp deja pris ?
 bool server::isNickTaken(const std::string& nick) {
-    for (std::list<client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-        if (it->getNick() == nick) return true;
+    for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        if ((*it)->getNick() == nick) return true;
     return false;
 }
 
@@ -168,9 +197,9 @@ static bool isValidUsername(const std::string& s)
 
 }
 
-static bool channelHasFd(const channel& ch, int fd)
+static bool channelHasFd(const channel* ch, int fd)
 {
-    std::list<client*> lst = ch.getClientList();
+    std::list<client*> lst = ch->getClientList();
     for (std::list<client*>::const_iterator it = lst.begin(); it != lst.end(); ++it)
 	{
         if ((*it)->getFd() == fd)
@@ -181,18 +210,16 @@ static bool channelHasFd(const channel& ch, int fd)
 
 // Partagent-ils au moins un channel ? (version map<string, channel>)
 static bool sharesAChannelByFd(const client* a, const client* b,
-                               const std::list<channel>& channels)
+                               const std::list<channel*>& channels)
 {
     if (!a || !b) return false;
     const int fda = a->getFd();
     const int fdb = b->getFd();
     if (fda == fdb) return true; // même client, cas trivial
 
-    for (std::list<channel>::const_iterator it = channels.begin();
-         it != channels.end(); ++it)
+    for (std::list<channel*>::const_iterator it = channels.begin(); it != channels.end(); ++it)
     {
-        const channel& ch = *it;
-        if (channelHasFd(ch, fda) && channelHasFd(ch, fdb))
+        if (channelHasFd((*it), fda) && channelHasFd((*it), fdb))
             return true;
     }
     return false;
@@ -226,15 +253,14 @@ void server::broadcastNickChange(client* cli, const std::string& oldNick, const 
     polloutActivate(cli);
 
     // À tous les autres clients qui partagent au moins un channel
-    for (std::list<client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+    for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
-        client& other = *it;
-        if (other.getFd() == cli->getFd())
+        if ((*it)->getFd() == cli->getFd())
             continue;
-        if (sharesAChannelByFd(cli, &other, _channels))
+        if (sharesAChannelByFd(cli, (*it), _channels))
 		{
-            other.enqueueLine(line);
-            polloutActivate(&other);
+            (*it)->enqueueLine(line);
+            polloutActivate((*it));
         }
     }
 }
@@ -504,10 +530,10 @@ bool	server::handleJoin(client* cli, message& msg)
 	if (params[0] == "0" && params.size() == 1)
 	{
 		//remove client from all channels' client lists
-		for (std::list<channel>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
+		for (std::list<channel*>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
 		{
 			message	msg;
-			msg.setParams(it->getChannelName());
+			msg.setParams((*it)->getChannelName());
 			(this->*_cmdList["PART"])(cli, msg);
 		}
 		//clear client chan list
@@ -548,12 +574,12 @@ bool	server::handleJoin(client* cli, message& msg)
 			continue;
 		}
 		//search for channel name
-		std::list<channel>::iterator itChan = std::find(this->_channels.begin(), this->_channels.end(), chanGiven[i]);
-		if (itChan == this->_channels.end())
+		channel* found = this->getChannelByName(chanGiven[i]);
+		if (!found)
 		{
 			//create the channel if itChan doesn't exist
 			//add the client to the channel's client list and op list (channel constructor)
-			channel newChannel(chanGiven[i], *cli);
+			channel* newChannel = new channel(chanGiven[i], cli);
 			//add new channel to the server's channel map
 			this->_channels.push_back(newChannel);
 			//add the channel to the client's channel list
@@ -562,12 +588,12 @@ bool	server::handleJoin(client* cli, message& msg)
 		else
 		{
 			//check if already in the channel
-			if (channelHasFd(*itChan, cli->getFd()) == false)
+			if (channelHasFd(found, cli->getFd()) == false)
 			{
 				//check if client is invited
-				if (itChan->isInviteOnly())
+				if (found->isInviteOnly())
 				{
-					std::list<client*>& invitedList = itChan->getInvitedList();
+					std::list<client*>& invitedList = found->getInvitedList();
 					if (std::find(invitedList.begin(), invitedList.end(), cli) == invitedList.end())
 					{
 						//not invited can't enter
@@ -578,9 +604,9 @@ bool	server::handleJoin(client* cli, message& msg)
 					}
 				}
 				//check if theres a channel key/password
-				if (!itChan->getKey().empty())
+				if (!found->getKey().empty())
 				{
-					if (i >= keysGiven.size() || keysGiven.empty() || itChan->getKey().compare(keysGiven[i]) != 0)
+					if (i >= keysGiven.size() || keysGiven.empty() || found->getKey().compare(keysGiven[i]) != 0)
 					{
 						polloutActivate(cli);
         				std::string line = ":" + this->_serverName + " 475 " + cli->getNick() + " " + chanGiven[i] + " :Invalid key\r\n";
@@ -589,9 +615,9 @@ bool	server::handleJoin(client* cli, message& msg)
 					}
 				}
 				//check if theres a limit
-				if (itChan->getLimit() != -1)
+				if (found->getLimit() != -1)
 				{
-					if (static_cast<size_t>(itChan->getLimit()) <= itChan->getClientList().size())
+					if (static_cast<size_t>(found->getLimit()) <= found->getClientList().size())
 					{
 						polloutActivate(cli);
         				std::string line = ":" + this->_serverName + " 471 " + cli->getNick() + " " + chanGiven[i] + " :Channel is full\r\n";
@@ -600,14 +626,14 @@ bool	server::handleJoin(client* cli, message& msg)
 					}
 				}
 				// if client got invited, remove him from the invited list
-				if (!itChan->getInvitedList().empty())
-					itChan->getInvitedList().remove(cli);
+				if (!found->getInvitedList().empty())
+					found->getInvitedList().remove(cli);
 				//add the channel to the client's channel list
 				// cli->getChannelList().push_back(params[0]); DARYL:j'ai mis en com
 				cli->getChannelList().push_back(chanGiven[i]);
 				//add the client to the channel's client list
-				itChan->getClientList().push_back(cli);
-				broadcastJoin(cli, *itChan);
+				found->getClientList().push_back(cli);
+				broadcastJoin(cli, *found);
 			}
 		}
 	}
@@ -617,10 +643,12 @@ bool	server::handleJoin(client* cli, message& msg)
 //PART
 bool server::handlePart(client *cli, message &msg)
 {
+	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
+
 	// 1) client pas registered
 	if (!cli->getRegistered())
 	{
-        std::string line = ":" + this->_serverName + "451 * :You are not registered\r\n";
+        std::string line = ":" + this->_serverName + " 451 " + target + " :You are not registered\r\n";
         cli->enqueueLine(line);
 		polloutActivate(cli);
 		return false;
@@ -628,7 +656,7 @@ bool server::handlePart(client *cli, message &msg)
     // 2) Pas de paramètre → erreur 461
 	if (msg.getParams().empty())
     {
-        std::string line = ":" + _serverName + " 461 " + cli->getNick() + " PART" + " :Not enough parameters\r\n";
+        std::string line = ":" + _serverName + " 461 " + target + " PART" + " :Not enough parameters\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
         return false;
@@ -641,13 +669,17 @@ bool server::handlePart(client *cli, message &msg)
 	while (std::getline(ss, item, ','))
 	{
 		if (std::find(chanGiven.begin(), chanGiven.end(), item) == chanGiven.end())
+		{
+			if (item[0] == ' ') // pas sur de ce if car si RFC strict la ligne doit etre #a,#b,#c
+				item.erase(0, 1);
 			chanGiven.push_back(item);
+		}
 	}
 
 	// 4) verifier si vecteur vide
 	if (chanGiven.empty())
 	{
-	    std::string line = ":" + _serverName + " 461 " + cli->getNick() + " PART" + " :Not enough parameters\r\n";
+	    std::string line = ":" + _serverName + " 461 " + target + " PART" + " :Not enough parameters\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
         return false;
@@ -659,31 +691,32 @@ bool server::handlePart(client *cli, message &msg)
 	{
 		if (server::isChannel(chanGiven[i]) == false)
 		{
-        	std::string line = ":" + this->_serverName + " 476 " + cli->getNick() + " " + chanGiven[i] + " :Bad channel mask\r\n";
+        	std::string line = ":" + this->_serverName + " 476 " + target + " " + chanGiven[i] + " :Bad channel mask\r\n";
         	cli->enqueueLine(line);
 			polloutActivate(cli);
 			continue;
 		}
 
-		if(std::find(_channels.begin(), _channels.end(), chanGiven[i]) == _channels.end())
+		channel* found = this->getChannelByName(chanGiven[i]);
+		if(!found)
 		{
-        	std::string line = ":" + this->_serverName + " 403 " + cli->getNick() + " " + chanGiven[i] + " :No such channel\r\n";
+        	std::string line = ":" + this->_serverName + " 403 " + target + " " + chanGiven[i] + " :No such channel\r\n";
         	cli->enqueueLine(line);
 			polloutActivate(cli);
 			continue;
 		}
-
-		std::list<channel>::iterator itChan = std::find(this->_channels.begin(), this->_channels.end(), chanGiven[i]);
-		if (channelHasFd(*itChan, cli->getFd()) == false)
+		else
 		{
-			std::string line = ":" + this->_serverName + " 442 " + cli->getNick() + " " + chanGiven[i] + " :You're not on that channel\r\n";
-        	cli->enqueueLine(line);
-			polloutActivate(cli);
-			continue;
+			if (channelHasFd(found, cli->getFd()) == false)
+			{
+				std::string line = ":" + this->_serverName + " 442 " + target + " " + chanGiven[i] + " :You're not on that channel\r\n";
+				cli->enqueueLine(line);
+				polloutActivate(cli);
+				continue;
+			}
+			validChan.push_back(chanGiven[i]);
 		}
-		validChan.push_back(chanGiven[i]);
 	}
-
 
 
 	// 8) verifier si message de depart
@@ -693,13 +726,21 @@ bool server::handlePart(client *cli, message &msg)
 			message = msg.getParams()[1];
 		for (size_t i = 1; i < msg.getParams().size(); i++)
 		{
-			std::string message;
 			message = message + " " + msg.getParams()[i];
 		}
 		if (message[0] != ':') // pas le bon format on ignore
 			message.clear();
 	}
 
+	for (size_t i = 0; i < validChan.size(); i++)
+	{
+		if (message.size() > 0)
+			std::string line = ":" + target + "!" + cli->getUser() + cli->getHost() + "PART" + validChan[i] + ":" + message;
+		else
+			std::string line = ":" + target + "!" + cli->getUser() + cli->getHost() + "PART" + validChan[i];
+
+
+	}
 
     // 3) Pour chaque channel :
     //      - Sinon : retirer le client, informer le channel
@@ -741,11 +782,11 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 	{
 		//erreur 401 si utilisateur dest inconnu
 		client* destClient = NULL;
-		for (std::list<client>::iterator	it = this->_clients.begin(); it != this->_clients.end(); it++)
+		for (std::list<client*>::iterator	it = this->_clients.begin(); it != this->_clients.end(); it++)
 		{
-			if (it->getNick() == params[0])
+			if ((*it)->getNick() == params[0])
 			{
-				destClient = &(*it);
+				destClient = (*it);
 				break;
 			}
 		}
@@ -767,11 +808,11 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 		/*client to channel*/
 		//erreur 403 si channel n'existe pas
 		channel*	destChannel = NULL;
-		for (std::list<channel>::iterator	it = this->_channels.begin(); it != this->_channels.end(); it++)
+		for (std::list<channel*>::iterator	it = this->_channels.begin(); it != this->_channels.end(); it++)
 		{
-			if (it->getChannelName() == params[0])
+			if ((*it)->getChannelName() == params[0])
 			{
-				destChannel = &(*it);
+				destChannel = (*it);
 				break;
 			}
 		}
@@ -865,9 +906,9 @@ bool	server::handleLog(client* cli, message& msg)
 	(void)cli; (void)msg;
 	std::cout << "----LOG----" << std::endl;
 	std::cout << "Clients enregistres: " << std::endl;
-	for (std::list<client>::iterator it = this->_clients.begin(); it != this->_clients.end(); it++)
+	for (std::list<client*>::iterator it = this->_clients.begin(); it != this->_clients.end(); it++)
 	{
-		std::cout << it->getNick() << std::endl;
+		std::cout << (*it)->getNick() << std::endl;
 	}
 	return true;
 }
@@ -1124,10 +1165,10 @@ void	server::initStopSignal(void) {
 
 /*----------HELPER FUNCTIONS-------------*/
 
-std::list<client>::iterator 		findClientByFd(std::list<client>& clients, int fd)
+std::list<client*>::iterator 		findClientByFd(std::list<client*>& clients, int fd)
 {
-    for (std::list<client>::iterator it = clients.begin(); it != clients.end(); ++it) {
-        if (it->getFd() == fd)
+    for (std::list<client*>::iterator it = clients.begin(); it != clients.end(); ++it) {
+        if ((*it)->getFd() == fd)
             return it;
     }
     return clients.end();
@@ -1177,7 +1218,7 @@ void server::run()
 			continue;
 		for (std::vector<pollfd>::iterator itPollFd = this->_fds.begin(); itPollFd != this->_fds.end(); ++itPollFd)
 		{
-			std::list<client>::iterator itClient = findClientByFd(this->_clients, itPollFd->fd); // trouve le client a partir du fd dans la liste des clients sinon retourne .end()
+			std::list<client*>::iterator itClient = findClientByFd(this->_clients, itPollFd->fd); // trouve le client a partir du fd dans la liste des clients sinon retourne .end()
 			if (itPollFd->revents & (POLLERR | POLLHUP | POLLNVAL))
     		{
 				if (itPollFd == this->_fds.begin()) // erreur sur le socket serv
@@ -1249,7 +1290,7 @@ void server::run()
                             break;
                         default: // message
                             bufferRecv[ret] = '\0';
-							std::string& buffer = itClient->getFullMessage();
+							std::string& buffer = (*itClient)->getFullMessage();
 							buffer += std::string(bufferRecv, ret);
 							size_t pos;
 							while ((pos = buffer.find("\r\n")) != std::string::npos)
@@ -1258,10 +1299,10 @@ void server::run()
 							    buffer.erase(0, pos + 2);
 							    std::cout << "Full msg: " << line << std::endl;
 
-							    if (parsing(&(*itClient), line))
+							    if (parsing((*itClient), line))
 							    {
 									//on recup le message parser
-									message&	msg = itClient->getMessage();
+									message&	msg = (*itClient)->getMessage();
 									std::string	cmdName = msg.getCommand();
 									// std::cout << "LOG: cmd du msg dans RUN: " << cmdName << std::endl;
 									// std::cout << "LOG: prm[0] du msg dans RUN: " << msg.getParams()[0] << std::endl;
@@ -1271,10 +1312,10 @@ void server::run()
 									bool	needsAuth = true;
 									if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
 										needsAuth = false;
-									if (needsAuth && !itClient->getRegistered())
+									if (needsAuth && !(*itClient)->getRegistered())
 									{
 										std::string	error = ":server 451 * :Vous n'etes pas enregistre !\r\n";
-										send(itClient->getFd(), error.c_str(), error.length(), 0);
+										send((*itClient)->getFd(), error.c_str(), error.length(), 0);
 										msg.clearMessage();
 										break;
 									}
@@ -1283,7 +1324,7 @@ void server::run()
 									if (this->_cmdList.find(cmdName) != this->_cmdList.end())
 									{
 										bool	res;
-										res = (this->*_cmdList[cmdName])(&(*itClient), msg);
+										res = (this->*_cmdList[cmdName])((*itClient), msg);
 										// std::cout << "LOG: on passe dans la verif cmd avec res= " << res << std::endl;
 										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
 										{
@@ -1293,8 +1334,8 @@ void server::run()
 									}
 									else
 									{
-										std::string	error = ":server 421 " + itClient->getNick() + " " + cmdName + " :Commande inconnue\r\n";
-										send(itClient->getFd(), error.c_str(), error.length(), 0);
+										std::string	error = ":server 421 " + (*itClient)->getNick() + " " + cmdName + " :Commande inconnue\r\n";
+										send((*itClient)->getFd(), error.c_str(), error.length(), 0);
 									}
 									msg.clearMessage();
 								}
@@ -1306,17 +1347,17 @@ void server::run()
 			// POLLOUT & send
 			if (itClient != this->_clients.end() && itPollFd->revents & POLLOUT)
 			{
-				while (itClient->hasPending())
+				while ((*itClient)->hasPending())
 				{
-					const char* base = itClient->getOutbuf().data() + itClient->getBytesSent();
-					size_t left = itClient->getOutbuf().size() - itClient->getBytesSent();
+					const char* base = (*itClient)->getOutbuf().data() + (*itClient)->getBytesSent();
+					size_t left = (*itClient)->getOutbuf().size() - (*itClient)->getBytesSent();
 
 					size_t n = send(itPollFd->fd, base, left, 0);
 					if (n > 0)
 					{
-						itClient->setBytesSent(itClient->getBytesSent() + n);
-						itClient->clearIfFlushed();
-						if (!(itClient->hasPending()))
+						(*itClient)->setBytesSent((*itClient)->getBytesSent() + n);
+						(*itClient)->clearIfFlushed();
+						if (!((*itClient)->hasPending()))
 							itPollFd->events &= ~POLLOUT;
 					}
 					else
@@ -1340,7 +1381,7 @@ void server::run()
                 pollingRequestClient.revents = 0;
                 this->_fds.push_back(pollingRequestClient);
                 client newClient(clientFd);
-                this->_clients.push_back(newClient);
+                this->_clients.push_back(&newClient);
             }
             toAdd.clear();
         }
@@ -1357,9 +1398,13 @@ void server::run()
 					}
 				}
                 // supprimer le client correspondant
-				for (std::list<client>::iterator cIt = this->_clients.begin(); cIt != this->_clients.end(); ++cIt) {
-					if (cIt->getFd() == fd) {
-						this->_clients.erase(cIt);
+				for (std::list<client*>::iterator cIt = this->_clients.begin(); cIt != this->_clients.end(); ++cIt) {
+					if ((*cIt)->getFd() == fd) {
+						client* toDel = *cIt;
+						this->_clients.erase(cIt);//supp du server
+						//supp des channels ou ce cIT est -> cli et op list
+						//supp le channel s'il est vide
+						delete toDel;
 						break;
 					}
 				}

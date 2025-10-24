@@ -13,22 +13,26 @@ class channel
 	private:
 		std::string				_name;
 		std::list<client*>		_clientsList;
-		bool					_topicStatus;
+		std::list<client*>		_invitedList;
+		std::list<client*>		_operatorsList;
+
 		std::string				_topic;
 		std::string				_topicWho;
-		time_t					_topicTimeStamp;
-		int						_limit;
-		bool					_inviteOnly;
-		std::list<client*>		_invitedList;
 		std::string				_key;
-		std::list<client*>		_operatorsList;
+
+		int						_limit;
+
+		bool					_topicStatus;
+		bool					_inviteOnly;
+
+		time_t					_topicTimeStamp;
 		channel(void);
+		channel(const channel& copy);
+		channel&	operator=(const channel& rhs);
 
-	public:
+		public:
 
-		channel(std::string name, client& creator);
-		channel(channel const & copy);
-		channel& 				operator=(channel const & rhs);
+		channel(std::string name, client* creator);
 		~channel(void);
 
 		std::string				getChannelName(void) const;
@@ -36,6 +40,12 @@ class channel
 
 		std::list<client*>&		getClientList(void);
 		const std::list<client*>&		getClientList(void) const;
+
+		std::list<client*>&		getInvitedList(void);
+		const std::list<client*>&		getInvitedList(void) const;
+
+		std::list<client*>&		getOpList(void);
+		const std::list<client*>&		getOpList(void) const;
 
 		bool					isRestrictedTopic(void) const;
 		void					setRestrictedTopic(bool newStatus);
@@ -56,17 +66,16 @@ class channel
 		bool					isInviteOnly(void) const;
 		void					setInviteOnly(bool newStatus);
 
-		std::list<client*>&		getInvitedList(void);
-
 		std::string				getKey(void) const;
 		void					setKey(std::string newKey);
 
-		std::list<client*>&		getOpList(void);
 
-		bool						operator==(const std::string& rhs) const;
-		bool						operator!=(const channel& rhs) const;
+		bool					operator==(const std::string& rhs) const;
+		bool					operator!=(const channel& rhs) const;
 
 		bool					isMember(client* cli) const;
+
+		//peut faire des fonctions void addMember(client* cli) et void removeMember(client* cli) ici
 
 };
 
