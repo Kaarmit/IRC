@@ -128,115 +128,14 @@ channel* server::getChannelByName(const std::string& name)
 }
 /*-------------------------*/
 
-
-/*--------------------CMD DU SERVER----------------*/
-
  /*-------------------UTILS------------------------*/
 
-static bool isSpecial(char c)
-{
-    // RFC: specials = []\`_^{}|
-    return c=='[' || c==']' || c=='\\' || c=='`' || c=='_' || c=='^' || c=='{' || c=='}' || c=='|';
-}
-static bool isNickFirst(char c)
-{
-    return isalpha(c) || isSpecial(c);
-}
-static bool isNickRest(char c)
-{
-    return isalnum(c) || isSpecial(c) || c=='-';
-}
-
-static bool isValidNick(const std::string& s)
-{
-    if (s.empty())
-		return false;
-    if (!isNickFirst(s[0]))
-		return false;
-    for (size_t i = 1; i < s.size(); ++i)
-	{
-        if (!isNickRest(s[i]))
-			return false;
-	}
-    return true;
-}
-
-// user/nick/jsp deja pris ?
 bool server::isNickTaken(const std::string& nick) {
     for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
         if ((*it)->getNick() == nick) return true;
     return false;
 }
 
-static bool isSpecialUser(char c)
-{
-	return c == '-' || c == '_' || c == '.';
-}
-
-static bool isValidUsername(const std::string& s)
-{
-	if (s.empty())
-	{
-		// std::cout << "LOG: s empty()" << std::endl;
-		return false;
-	}
-	if (s.size() > 25)//ici c'est 10 mais j'ai change sinon Daryl Avril ne passe pas
-	{
-		// std::cout << "LOG: s > 10" << std::endl;
-		return false;
-	}
-	for (size_t i = 0; i < s.size(); i++)
-	{
-		if(!isSpecialUser(s[i]) && !isalnum(s[i])) //creer isspecialUser() juste au dessus
-		{
-			// std::cout << "LOG: s dans for()" << std::endl;
-			return false;
-		}
-	}
-	return true;
-
-}
-
-static bool channelHasFd(const channel* ch, int fd)
-{
-    std::list<client*> lst = ch->getClientList();
-    for (std::list<client*>::const_iterator it = lst.begin(); it != lst.end(); ++it)
-	{
-        if ((*it)->getFd() == fd)
-			return true;
-    }
-    return false;
-}
-
-// Partagent-ils au moins un channel ? (version map<string, channel>)
-static bool sharesAChannelByFd(const client* a, const client* b,
-                               const std::list<channel*>& channels)
-{
-    if (!a || !b) return false;
-    const int fda = a->getFd();
-    const int fdb = b->getFd();
-    if (fda == fdb) return true; // même client, cas trivial
-
-    for (std::list<channel*>::const_iterator it = channels.begin(); it != channels.end(); ++it)
-    {
-        if (channelHasFd((*it), fda) && channelHasFd((*it), fdb))
-            return true;
-    }
-    return false;
-}
-
-// Construit un prefix utilisateur : nick!user@host
-static std::string userPrefix(const client* c)
-{
-	std::string prefix;
-	if (!(c->getNick().empty()))
-		prefix.append(":" + c->getNick());
-	if (!(c->getUser().empty()))
-		prefix.append("!" + c->getUser());
-	if (!(c->getHost().empty()))
-		prefix.append("@" + c->getHost());
-    return (prefix);
-}
 
 // Broadcast NICK (à soi + tous les clients partageant un canal)
 void server::broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick)
@@ -315,11 +214,34 @@ void server::sendWelcomeIfRegistrationComplete(client* cli)
 
         // RPL_WELCOME (001)
         std::string line = ":" + _serverName + " 001 " + cli->getNick()
-                         + " :Welcome to the Internet Relay Network " + prefix + "\r\n";
+                         + " :Welcome to the Internet Relay Network !!! " + prefix + "\r\n";
 
         cli->enqueueLine(line);
         polloutActivate(cli);
     }
+}
+
+bool	server::basicChecks(client* cli, message& msg)
+{
+	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
+	
+	if (cli->getRegistered())
+	{
+		std::string line = ":" + _serverName + " 462 " + target + " :You may not reregister\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+		// std::cout << "LOG: return false dans user() a la verif 1" << std::endl;
+        return false;
+	}
+    if (msg.getParams().empty())
+    {
+        std::string line = ":" + _serverName + " 431 " + target + " :No nickname given\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+		// std::cout << "LOG: return false dans nick() a la verif 1" << std::endl;
+        return false;
+    }
+	return true;
 }
 
 // FONCTION POUR ACTIVER POLLOUT
@@ -378,7 +300,6 @@ bool	server::handlePass(client* cli, message& msg)
 	}
 	//si tout opk, on set le pass a true ou return true
 	cli->setPass(msg.getParams()[0]);//enlever?
-	cli->setRegistered(true);
 	std::string passSet = ":" + this->_serverName + " User password has been set\r\n";
 	cli->enqueueLine(passSet);
 	polloutActivate(cli);
@@ -391,19 +312,12 @@ bool server::handleNick(client* cli, message& msg)
 {
     const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
 
-    // 1) Pas de paramètre
-    if (msg.getParams().empty())
-    {
-        std::string line = ":" + _serverName + " 431 " + target + " :No nickname given\r\n";
-        cli->enqueueLine(line);
-        polloutActivate(cli);
-		// std::cout << "LOG: return false dans nick() a la verif 1" << std::endl;
-        return false;
-    }
-
+	
+	if (!basicChecks(cli, msg))
+		return false;
     const std::string requested = msg.getParams().back();
+	
 
-    // 2) Format invalide
     if (!isValidNick(requested))
     {
         std::string line = ":" + _serverName + " 432 " + target + " " + requested + " :Erroneous nickname\r\n";
@@ -412,8 +326,6 @@ bool server::handleNick(client* cli, message& msg)
 		// std::cout << "LOG: return false dans nick() a la verif 2" << std::endl;
         return false;
     }
-
-    // 3) Déjà pris
     if (isNickTaken(requested))
     {
         std::string line = ":" + _serverName + " 433 " + target + " " + requested + " :Nickname is already in use\r\n";
@@ -423,7 +335,6 @@ bool server::handleNick(client* cli, message& msg)
         return false;
     }
 
-    // 4) Changement ou première assignation
     const bool hadNick = !cli->getNick().empty();
     const std::string oldNick = cli->getNick();
     cli->setNick(requested);
@@ -431,7 +342,6 @@ bool server::handleNick(client* cli, message& msg)
     if (cli->getRegistered() && hadNick && oldNick != requested)
         broadcastNickChange(cli, oldNick, requested);
 
-    // 5) Envoi du message 001 de bienvenue si enregistrement complet
     if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
 		sendWelcomeIfRegistrationComplete(cli);
 
@@ -444,25 +354,9 @@ bool	server::handleUser(client* cli, message& msg)
 {
 	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
 
-	// 1) deja registered
-	if (cli->getRegistered())
-	{
-		std::string line = ":" + _serverName + " 462 " + target + " :You may not reregister\r\n";
-        cli->enqueueLine(line);
-        polloutActivate(cli);
-		// std::cout << "LOG: return false dans user() a la verif 1" << std::endl;
-        return false;
-	}
+	if (!basicChecks(cli, msg))
+		return false;
 
-    // 2) moins de 4 parametres
-    if (msg.getParams().size() < 4)
-    {
-        std::string line = ":" + _serverName + " 461 " + target + " USER" + " :Not enough parameters\r\n";
-        cli->enqueueLine(line);
-        polloutActivate(cli);
-		// std::cout << "LOG: return false dans user() a la verif 2" << std::endl;
-        return false;
-    }
 
 	const std::string username = msg.getParams()[0];
 	// std::cout << "LOG: username: " << username << std::endl;
@@ -470,7 +364,6 @@ bool	server::handleUser(client* cli, message& msg)
 	// std::cout << "LOG: servername: " << msg.getParams()[2] << std::endl;
 	// std::cout << "LOG: realname: " << msg.getParams()[3] << std::endl;
 
-    // 3) Format invalide
     if (!isValidUsername(username))
     {
         std::string line = ":" + _serverName + " 468 " + target +  " :Erroneous username\r\n";
@@ -502,7 +395,8 @@ bool	server::handleUser(client* cli, message& msg)
 //JOIN
 bool	server::handleJoin(client* cli, message& msg)
 {
-	//check if registered
+
+
 	if (!cli->getRegistered())
 	{
 		polloutActivate(cli);
@@ -519,6 +413,7 @@ bool	server::handleJoin(client* cli, message& msg)
         cli->enqueueLine(line);
 		return false;
 	}
+
 	if (params.size() > 2)
 	{
 		polloutActivate(cli);
@@ -645,7 +540,6 @@ bool server::handlePart(client *cli, message &msg)
 {
 	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
 
-	// 1) client pas registered
 	if (!cli->getRegistered())
 	{
         std::string line = ":" + this->_serverName + " 451 " + target + " :You are not registered\r\n";
@@ -662,7 +556,6 @@ bool server::handlePart(client *cli, message &msg)
         return false;
     }
 
-	// 3) Découper la liste de channels
 	std::vector<std::string> chanGiven;
 	std::stringstream ss(msg.getParams()[0]);
 	std::string item;
@@ -676,7 +569,6 @@ bool server::handlePart(client *cli, message &msg)
 		}
 	}
 
-	// 4) verifier si vecteur vide
 	if (chanGiven.empty())
 	{
 	    std::string line = ":" + _serverName + " 461 " + target + " PART" + " :Not enough parameters\r\n";
@@ -685,7 +577,6 @@ bool server::handlePart(client *cli, message &msg)
         return false;
 	}
 
-	// 5) verifier mask + channel existe + appartenance au channel
 	std::vector<std::string> validChan;
 	for (size_t i = 0; i < chanGiven.size(); ++i)
 	{
@@ -718,8 +609,6 @@ bool server::handlePart(client *cli, message &msg)
 		}
 	}
 
-
-	// 8) verifier si message de depart
 	std::string message;
 	if (msg.getParams().size() >= 2)
 	{
@@ -750,10 +639,10 @@ bool server::handlePart(client *cli, message &msg)
 //PRIVMSG
 bool	server::handlePrivmsg(client* cli, message& msg)
 {
-	//erreur 401 si cli inconnu
+	
 	if (!cli->getRegistered())
 	{
-		std::string error = ":server 451 * : You have not regitered\r\n";
+		std::string error = ":server 451 * : You have not registered\r\n";
 		cli->enqueueLine(error);
 		polloutActivate(cli);
 		return false;
@@ -768,6 +657,7 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 		polloutActivate(cli);
 		return false;
 	}
+	
 	//ereur 412 si pas de message
 	if (params.size() < 2)
 	{
@@ -1159,6 +1049,8 @@ void	server::initStopSignal(void) {
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGUSR2, &sa, NULL);
+	signal(SIGPIPE, SIG_IGN); // a checker 
+
 }
 
 /*---------------------------------------*/
@@ -1219,7 +1111,11 @@ void server::run()
 		for (std::vector<pollfd>::iterator itPollFd = this->_fds.begin(); itPollFd != this->_fds.end(); ++itPollFd)
 		{
 			client* itClient = this->getClientByF(itPollFd->fd);//remplacer par ca pour ne pas utiliser un iterator (?)
-			// std::list<client*>::iterator itClient = findClientByFd(this->_clients, itPollFd->fd); // trouve le client a partir du fd dans la liste des clients sinon retourne .end()
+			if (!itClient && itPollFd != this->_fds.begin()) 
+			{
+   				 toRemove.push_back(itPollFd->fd);
+   				 continue;
+			}
 			if (itPollFd->revents & (POLLERR | POLLHUP | POLLNVAL))
     		{
 				if (itPollFd == this->_fds.begin()) // erreur sur le socket serv
@@ -1235,11 +1131,14 @@ void server::run()
     		}
 			if (itPollFd->revents & POLLIN)
 			{
-				// std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
+				std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
                 if (itPollFd == this->_fds.begin()) // signal sur socket serv = nouvelle(s) connexion(s) client
 				{
+					std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans pas server"  << std::endl;
 					while (true) // en 'rafale'
 					{
+						std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans while true"  << std::endl;
+						
                     	struct sockaddr_storage clientAddr;
                     	socklen_t addrLen = sizeof(clientAddr);
 						int clientFd;
@@ -1291,7 +1190,7 @@ void server::run()
                             break;
                         default: // message
                             bufferRecv[ret] = '\0';
-							std::string& buffer = (*itClient)->getFullMessage();
+							std::string& buffer = (*itClient).getFullMessage();
 							buffer += std::string(bufferRecv, ret);
 							size_t pos;
 							while ((pos = buffer.find("\r\n")) != std::string::npos)
@@ -1300,23 +1199,23 @@ void server::run()
 							    buffer.erase(0, pos + 2);
 							    std::cout << "Full msg: " << line << std::endl;
 
-							    if (parsing((*itClient), line))
+							    if (parsing((itClient), line))
 							    {
 									//on recup le message parser
-									message&	msg = (*itClient)->getMessage();
+									message&	msg = (*itClient).getMessage();
 									std::string	cmdName = msg.getCommand();
-									// std::cout << "LOG: cmd du msg dans RUN: " << cmdName << std::endl;
-									// std::cout << "LOG: prm[0] du msg dans RUN: " << msg.getParams()[0] << std::endl;
-									// std::cout << "LOG: prm.back() du msg dans RUN: " << msg.getParams().back() << ", avec size=" << msg.getParams().size()<< std::endl;
+									std::cout << "LOG: cmd du msg dans RUN: " << cmdName << std::endl;
+									std::cout << "LOG: prm[0] du msg dans RUN: " << msg.getParams()[0] << std::endl;
+									std::cout << "LOG: prm.back() du msg dans RUN: " << msg.getParams().back() << ", avec size=" << msg.getParams().size()<< std::endl;
 
 									//verif d'auth
 									bool	needsAuth = true;
 									if (cmdName == "PASS" || cmdName == "USER" || cmdName == "NICK" || cmdName == "QUIT")
 										needsAuth = false;
-									if (needsAuth && !(*itClient)->getRegistered())
+									if (needsAuth && !(*itClient).getRegistered())
 									{
 										std::string	error = ":server 451 * :Vous n'etes pas enregistre !\r\n";
-										send((*itClient)->getFd(), error.c_str(), error.length(), 0);
+										send(itClient->getFd(), error.c_str(), error.length(), 0);
 										msg.clearMessage();
 										break;
 									}
@@ -1325,18 +1224,18 @@ void server::run()
 									if (this->_cmdList.find(cmdName) != this->_cmdList.end())
 									{
 										bool	res;
-										res = (this->*_cmdList[cmdName])((*itClient), msg);
-										// std::cout << "LOG: on passe dans la verif cmd avec res= " << res << std::endl;
+										res = (this->*_cmdList[cmdName])((itClient), msg);
+										std::cout << "LOG: on passe dans la verif cmd avec res= " << res << std::endl;
 										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
 										{
-											// std::cout << "LOG: on passe dans la verif PASS et !res avec cmdName:" << cmdName << "et res(true si la cmd a ete exec)= " << res << std::endl;
+											std::cout << "LOG: on passe dans la verif PASS et !res avec cmdName:" << cmdName << "et res(true == 1 si la cmd a ete exec)= " << res << std::endl;
 											toRemove.push_back(itPollFd->fd);
 										}
 									}
 									else
 									{
-										std::string	error = ":server 421 " + (*itClient)->getNick() + " " + cmdName + " :Commande inconnue\r\n";
-										send((*itClient)->getFd(), error.c_str(), error.length(), 0);
+										std::string	error = ":server 421 " + itClient->getNick() + " " + cmdName + " :Commande inconnue\r\n";
+										send(itClient->getFd(), error.c_str(), error.length(), 0);
 									}
 									msg.clearMessage();
 								}
@@ -1346,19 +1245,19 @@ void server::run()
                 }
             }
 			// POLLOUT & send
-			if (itClient != this->_clients.end() && itPollFd->revents & POLLOUT)
+			if (itClient /*!= this->_clients.end() */&& (itPollFd->revents & POLLOUT))
 			{
-				while ((*itClient)->hasPending())
+				while ((*itClient).hasPending())
 				{
-					const char* base = (*itClient)->getOutbuf().data() + (*itClient)->getBytesSent();
-					size_t left = (*itClient)->getOutbuf().size() - (*itClient)->getBytesSent();
+					const char* base = itClient->getOutbuf().data() + itClient->getBytesSent();
+					size_t left = itClient->getOutbuf().size() - itClient->getBytesSent();
 
-					size_t n = send(itPollFd->fd, base, left, 0);
+					ssize_t n = send(itPollFd->fd, base, left, 0);
 					if (n > 0)
 					{
-						(*itClient)->setBytesSent((*itClient)->getBytesSent() + n);
-						(*itClient)->clearIfFlushed();
-						if (!((*itClient)->hasPending()))
+						itClient->setBytesSent((itClient)->getBytesSent() + n);
+						itClient->clearIfFlushed();
+						if (!(itClient->hasPending()))
 							itPollFd->events &= ~POLLOUT;
 					}
 					else
@@ -1381,8 +1280,8 @@ void server::run()
                 pollingRequestClient.events = POLLIN;
                 pollingRequestClient.revents = 0;
                 this->_fds.push_back(pollingRequestClient);
-                client newClient(clientFd);
-                this->_clients.push_back(&newClient);
+				client* newClient = new client(clientFd);
+				this->_clients.push_back(newClient);
             }
             toAdd.clear();
         }
