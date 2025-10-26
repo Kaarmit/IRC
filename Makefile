@@ -18,7 +18,8 @@ SRCS        = $(SRC_DIR)/main.cpp \
 			  $(SRC_DIR)/server/server.cpp \
 			  $(SRC_DIR)/client/client.cpp \
 			  $(SRC_DIR)/channel/channel.cpp \
-			  $(SRC_DIR)/message/message.cpp
+			  $(SRC_DIR)/message/message.cpp \
+			  $(SRC_DIR)/server/utils.cpp
 
 # Fichiers objets correspondants
 OBJS        = $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
