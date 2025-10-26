@@ -1,4 +1,3 @@
-
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
@@ -48,9 +47,8 @@ class server
 
 		void	broadcastJoin(client* cli, channel& chan);
 
-		bool	isTaken(message& msg);//non utilise
-
 		bool	isChannel(std::string str) const;
+		bool	basicChecks(client* cli, message& msg);
 		/*---*/
 
 		/*cmd*/
@@ -106,5 +104,17 @@ class server
 		client* getClientByNick(const std::string& nick);
 		channel* getChannelByName(const std::string& name);
 };
+
+
+bool isSpecial(char c);
+bool isNickFirst(char c);
+bool isNickRest(char c);
+bool isValidNick(const std::string& s);
+bool isSpecialUser(char c);
+bool isValidUsername(const std::string& s);
+bool channelHasFd(const channel* ch, int fd);
+bool sharesAChannelByFd(const client* a, const client* b,
+                               const std::list<channel*>& channels);
+std::string userPrefix(const client* c);
 
 #endif
