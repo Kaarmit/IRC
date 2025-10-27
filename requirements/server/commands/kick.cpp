@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:44:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 14:27:41 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/27 14:55:10 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,11 +99,11 @@ bool	server::handleKick(client* cli, message& msg)
         return false;
     }
     
-    
+   
+    std::string user;
     for (size_t i = 0; i < chanGiven.size(); i++)
     {
         const std::string& chname = chanGiven[i];
-        std::string user;
         
         if (userToKick.size() == 1)
             user = userToKick[0];
@@ -162,7 +162,30 @@ bool	server::handleKick(client* cli, message& msg)
             continue;
         }
         
+        std::string comment; 
+        if (params.size() > 2)
+        {
+            std::string joined = msg.getParams()[1];
+            for (size_t i = 2; i < msg.getParams().size(); ++i)
+                joined += " " + msg.getParams()[i];
+
+            if (!joined.empty() && joined[0] == ':')
+                joined.erase(0, 1);
+
+            while (!joined.empty() && (joined[0] == ' ' || joined[0] == '\t')) joined.erase(0,1);
+
+            if (!joined.empty())
+            comment = " :" + joined;
+        }
+        else 
+            comment = user;
         
+        const std::string prefix = userPrefix(cli);
+        std::string line = prefix + " KICK " + chname + user + comment + "\r\n";
+        broadcastToChannel(ch, line);
+        removeClientFromChannel(ch, tokick);
+        if (channelEmpty(ch))
+            deleteChannel(ch);
     }
     return true;
     

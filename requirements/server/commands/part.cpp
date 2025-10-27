@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   handlepart.cpp                                     :+:      :+:    :+:   */
+/*   part.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:42:15 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 11:42:24 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/27 14:52:10 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,7 +117,7 @@ bool server::handlePart(client *cli, message &msg)
     }
 
     // --- 5) Broadcast PART, retirer le client, supprimer le salon si vide
-    const std::string prefix = ":" + cli->getNick() + "!" + cli->getUser() + "@" + cli->getHost();
+    const std::string prefix = userPrefix(cli);
 
     for (size_t i = 0; i < validChan.size(); ++i)
     {
