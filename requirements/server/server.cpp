@@ -244,6 +244,51 @@ bool	server::basicChecks(client* cli, message& msg)
 	return true;
 }
 
+void server::broadcastToChannel(channel* ch, const std::string& line)
+{
+    // Diffuse à tous les membres du salon (détectés via channelHasFd)
+    for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+    {
+        client* c = *it;
+        if (!c) continue;
+        if (channelHasFd(ch, c->getFd()))
+        {
+            c->enqueueLine(line);
+            polloutActivate(c);
+        }
+    }
+}
+
+// Retire le client du salon (de toutes les "rôles"/listes), via channel::remove(fd)
+void server::removeClientFromChannel(channel* ch, client* cli)
+{
+    if (!ch || !cli) return;
+    ch->remove(cli);
+}
+
+bool server::channelEmpty(channel* ch) const
+{
+    if (!ch) return true;
+    return ch->empty();
+}
+
+// Supprime le salon de _channels et libère la mémoire
+void server::deleteChannel(channel* ch)
+{
+    if (!ch) return;
+    const std::string& name = ch->name();
+
+    for (std::list<channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+    {
+        if (*it == ch || (*it && (*it)->name() == name))
+        {
+            _channels.erase(it);
+            delete ch;
+            return;
+        }
+    }
+}
+
 // FONCTION POUR ACTIVER POLLOUT
 void	server::polloutActivate(client* cli)
 {
@@ -536,6 +581,7 @@ bool	server::handleJoin(client* cli, message& msg)
 }
 
 //PART
+//PART
 bool server::handlePart(client *cli, message &msg)
 {
 	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
@@ -548,93 +594,121 @@ bool server::handlePart(client *cli, message &msg)
 		return false;
 	}
     // 2) Pas de paramètre → erreur 461
-	if (msg.getParams().empty())
+	if (msg.getParams().empty() || msg.getParams()[0].empty())
     {
-        std::string line = ":" + _serverName + " 461 " + target + " PART" + " :Not enough parameters\r\n";
+        std::string line = ":" + _serverName + " 461 " + target + " PART :Not enough parameters\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
         return false;
     }
 
-	std::vector<std::string> chanGiven;
-	std::stringstream ss(msg.getParams()[0]);
-	std::string item;
-	while (std::getline(ss, item, ','))
-	{
-		if (std::find(chanGiven.begin(), chanGiven.end(), item) == chanGiven.end())
-		{
-			if (item[0] == ' ') // pas sur de ce if car si RFC strict la ligne doit etre #a,#b,#c
-				item.erase(0, 1);
-			chanGiven.push_back(item);
-		}
-	}
+    // --- 2) Parser la liste <#a,#b,#c> avec trim + dédup
+    std::vector<std::string> chanGiven;
+    {
+        std::stringstream ss(msg.getParams()[0]);
+        std::string item;
+        while (std::getline(ss, item, ',')) {
+            // trim des espaces autour
+            // (mini-trim inline sans helper)
+            while (!item.empty() && (item[0] == ' ' || item[0] == '\t')) item.erase(0, 1);
+            while (!item.empty() && (item[item.size()-1] == ' ' || item[item.size()-1] == '\t')) item.erase(item.size()-1);
 
-	if (chanGiven.empty())
-	{
-	    std::string line = ":" + _serverName + " 461 " + target + " PART" + " :Not enough parameters\r\n";
+            if (item.empty()) continue;
+
+            // dédup
+            if (std::find(chanGiven.begin(), chanGiven.end(), item) == chanGiven.end())
+                chanGiven.push_back(item);
+        }
+    }
+
+    if (chanGiven.empty())
+    {
+        std::string line = ":" + _serverName + " 461 " + target + " PART :Not enough parameters\r\n";
         cli->enqueueLine(line);
         polloutActivate(cli);
         return false;
-	}
+    }
 
-	std::vector<std::string> validChan;
-	for (size_t i = 0; i < chanGiven.size(); ++i)
-	{
-		if (server::isChannel(chanGiven[i]) == false)
-		{
-        	std::string line = ":" + this->_serverName + " 476 " + target + " " + chanGiven[i] + " :Bad channel mask\r\n";
-        	cli->enqueueLine(line);
-			polloutActivate(cli);
-			continue;
-		}
+    // --- 3) Valider chaque channel + appartenance
+    std::vector<std::string> validChan;
+    for (size_t i = 0; i < chanGiven.size(); ++i)
+    {
+        const std::string& chname = chanGiven[i];
 
-		channel* found = this->getChannelByName(chanGiven[i]);
-		if(!found)
-		{
-        	std::string line = ":" + this->_serverName + " 403 " + target + " " + chanGiven[i] + " :No such channel\r\n";
-        	cli->enqueueLine(line);
-			polloutActivate(cli);
-			continue;
-		}
-		else
-		{
-			if (channelHasFd(found, cli->getFd()) == false)
-			{
-				std::string line = ":" + this->_serverName + " 442 " + target + " " + chanGiven[i] + " :You're not on that channel\r\n";
-				cli->enqueueLine(line);
-				polloutActivate(cli);
-				continue;
-			}
-			validChan.push_back(chanGiven[i]);
-		}
-	}
+        if (!server::isChannel(chname))
+        {
+            std::string line = ":" + _serverName + " 476 " + target + " " + chname + " :Bad channel mask\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
 
-	std::string message;
-	if (msg.getParams().size() >= 2)
-	{
-			message = msg.getParams()[1];
-		for (size_t i = 1; i < msg.getParams().size(); i++)
-		{
-			message = message + " " + msg.getParams()[i];
-		}
-		if (message[0] != ':') // pas le bon format on ignore
-			message.clear();
-	}
+        channel* ch = this->getChannelByName(chname);
+        if (!ch)
+        {
+            std::string line = ":" + _serverName + " 403 " + target + " " + chname + " :No such channel\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
 
-	for (size_t i = 0; i < validChan.size(); i++)
-	{
-		if (message.size() > 0)
-			std::string line = ":" + target + "!" + cli->getUser() + cli->getHost() + "PART" + validChan[i] + ":" + message;
-		else
-			std::string line = ":" + target + "!" + cli->getUser() + cli->getHost() + "PART" + validChan[i];
+        if (!channelHasFd(ch, cli->getFd()))
+        {
+            std::string line = ":" + _serverName + " 442 " + target + " " + chname + " :You're not on that channel\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
 
+        validChan.push_back(chname);
+    }
 
-	}
+    if (validChan.empty())
+        return false; // Rien à faire (tout a été répondu par erreurs)
 
-    // 3) Pour chaque channel :
-    //      - Sinon : retirer le client, informer le channel
-    //      - Si channel vide → le supprimer
-	return true; //ajout de Daryl juste pour compile
+    // --- 4) Construire la "reason" optionnelle (trailing param)
+    // RFC: le trailing commence par ':' côté wire. Pour l’émission on normalise à " :reason".
+    std::string trailing;
+    if (msg.getParams().size() >= 2)
+    {
+        // Join params[1..end] avec espaces
+        std::string joined = msg.getParams()[1];
+        for (size_t i = 2; i < msg.getParams().size(); ++i)
+            joined += " " + msg.getParams()[i];
+
+        if (!joined.empty() && joined[0] == ':')
+            joined.erase(0, 1);          // retire ':' initial si présent
+
+        // trim léger en tête si besoin
+        while (!joined.empty() && (joined[0] == ' ' || joined[0] == '\t')) joined.erase(0,1);
+
+        if (!joined.empty())
+            trailing = " :" + joined;    // ajoute exactement un " :"
+    }
+
+    // --- 5) Broadcast PART, retirer le client, supprimer le salon si vide
+    const std::string prefix = ":" + cli->getNick() + "!" + cli->getUser() + "@" + cli->getHost();
+
+    for (size_t i = 0; i < validChan.size(); ++i)
+    {
+        const std::string& chname = validChan[i];
+        channel* ch = this->getChannelByName(chname);
+        if (!ch) // Par sécurité (peu probable entre la validation et ici)
+            continue;
+
+        // a) Diffuser à TOUS les membres (y compris l’émetteur)
+        std::string line = prefix + " PART " + chname + trailing + "\r\n";
+        broadcastToChannel(ch, line); // -> helper à avoir; cf. note ci-dessous
+
+        // b) Retirer le client du salon (membre, op, voice, etc.)
+        removeClientFromChannel(ch, cli); // -> helper à avoir; cf. note ci-dessous
+
+        // c) Si salon vide, suppression côté serveur
+        if (channelEmpty(ch))
+            deleteChannel(ch); // -> helper : enlève de _channels et delete*
+    }
+
+    return true;
 }
 //PRIVMSG
 bool	server::handlePrivmsg(client* cli, message& msg)
