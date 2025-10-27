@@ -102,20 +102,20 @@ char*	server::getPort() const
 
 void	server::initCmdServer()
 {
-	this->_cmdList["PASS"] = &server::handlePass;
-	this->_cmdList["NICK"] = &server::handleNick;
-	this->_cmdList["USER"] = &server::handleUser;
-	this->_cmdList["JOIN"] = &server::handleJoin;
-	this->_cmdList["PRIVMSG"] = &server::handlePrivmsg;
-	this->_cmdList["PING"] = &server::handlePing;
-	this->_cmdList["MODE"] = &server::handleMode;
 	this->_cmdList["INVITE"] = &server::handleInvite;
+	this->_cmdList["JOIN"] = &server::handleJoin;
 	this->_cmdList["KICK"] = &server::handleKick;
+	this->_cmdList["LOG"] = &server::handleLog;//test opur afficher des logs
+	this->_cmdList["MODE"] = &server::handleMode;
+	this->_cmdList["NICK"] = &server::handleNick;
 	this->_cmdList["PART"] = &server::handlePart;
+	this->_cmdList["PASS"] = &server::handlePass;
+	this->_cmdList["PING"] = &server::handlePing;
+	this->_cmdList["PRIVMSG"] = &server::handlePrivmsg;
 	this->_cmdList["QUIT"] = &server::handleQuit;
 	this->_cmdList["TOPIC"] = &server::handleTopic;
+	this->_cmdList["USER"] = &server::handleUser;
 	this->_cmdList["WHO"] = &server::handleWho;
-	this->_cmdList["LOG"] = &server::handleLog;//test opur afficher des logs
 }
 
 /*-------------------------------------------------*/

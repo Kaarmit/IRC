@@ -52,24 +52,23 @@ class server
 		/*---*/
 
 		/*cmd*/
-		bool	handlePass(client* cli, message& msg);
-		bool	handleNick(client* cli, message& msg);
-		bool	handleUser(client* cli, message& msg);
-		bool	handleJoin(client* cli, message& msg);
-		bool	handlePart(client* cli, message& msg);
-		bool	handlePrivmsg(client* cli, message& msg);
-		bool	handleKick(client* cli, message& msg);
-		bool	handleInvite(client* cli, message& msg);
-		bool	handleTopic(client* cli, message& msg);
-		bool	handleMode(client* cli, message& msg);
-		bool	handlePing(client* cli, message& msg);
-		bool	handleQuit(client* cli, message& msg);
-		bool	handleWho(client* cli, message& msg);
-		bool	handleLog(client* cli, message& msg);
-		/*---*/
-
-
 		void	initCmdServer();
+
+		bool	handleInvite(client* cli, message& msg);
+		bool	handleJoin(client* cli, message& msg);
+		bool	handleKick(client* cli, message& msg);
+		bool	handleLog(client* cli, message& msg);
+		bool	handleMode(client* cli, message& msg);
+		bool	handleNick(client* cli, message& msg);
+		bool	handlePart(client* cli, message& msg);
+		bool	handlePass(client* cli, message& msg);
+		bool	handlePing(client* cli, message& msg);
+		bool	handlePrivmsg(client* cli, message& msg);
+		bool	handleQuit(client* cli, message& msg);
+		bool	handleTopic(client* cli, message& msg);
+		bool	handleUser(client* cli, message& msg);
+		bool	handleWho(client* cli, message& msg);
+		/*---*/
 
 		/*signaux*/
 		void	initStopSignal(void);
