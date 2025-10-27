@@ -75,11 +75,11 @@ class channel
 
 		bool					isMember(client* cli) const;
 
-		void remove(client *c);
+		void 					remove(client *c);
     	// Vrai si plus aucun membre
-    	bool empty() const;
+    	bool 					empty() const;
     	// Nom public du salon (ex: "#42")
-    	const std::string& name() const;
+    	const std::string& 		name() const;
 
 		//peut faire des fonctions void addMember(client* cli) et void removeMember(client* cli) ici
 
