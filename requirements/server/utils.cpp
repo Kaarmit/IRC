@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 15:18:22 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/27 15:25:32 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -312,5 +312,17 @@ void	server::polloutActivate(client* cli)
 		}
 	}
 	return;
+}
+
+bool isOP(client* cli, channel* ch)
+{
+    const std::list<client*>& opList = ch->getOpList();
+
+    for (std::list<client*>::const_iterator it = opList.begin(); it != opList.end(); ++it)
+    {
+        if (*it == cli)
+            return true;
+    }
+    return false;
 }
 

@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:46:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 11:46:54 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/27 15:24:39 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,18 @@
 
 bool	server::handleQuit(client* cli, message& msg)
 {
-	// verif si param.empty
+	
+	if(msg.getParams().empty())
+	{
+		std::string	error = ":" + this->_serverName + " 461 * :Not enough parameters\r\n";
+		cli->enqueueLine(error);
+		polloutActivate(cli);
+		// std::cout << "LOG: return false dans pass() a la verif 1" << std::endl;
+		return false;
+	}
+
+	
+	
 	// iterer sur cli channelList
 	// it->getClientList().remove(*cli);
 	// it->getOpList().remove(*cli);

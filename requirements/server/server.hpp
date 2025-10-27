@@ -109,7 +109,7 @@ class server
     	void deleteChannel(channel* ch);
 };
 
-
+bool isOP(client* cli, channel* ch);
 bool isSpecial(char c);
 bool isNickFirst(char c);
 bool isNickRest(char c);

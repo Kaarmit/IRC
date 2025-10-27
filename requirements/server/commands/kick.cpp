@@ -6,25 +6,11 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:44:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 15:18:26 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/27 15:26:01 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../server.hpp"
-
-bool isOP(client* cli, channel* ch)
-{
-    const std::list<client*>& opList = ch->getOpList();
-
-    for (std::list<client*>::const_iterator it = opList.begin(); it != opList.end(); ++it)
-    {
-        if (*it == cli)
-            return true;
-    }
-    return false;
-}
-
-
 
 bool	server::handleKick(client* cli, message& msg)
 {
