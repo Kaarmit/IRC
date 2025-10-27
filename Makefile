@@ -19,7 +19,12 @@ SRCS        = $(SRC_DIR)/main.cpp \
 			  $(SRC_DIR)/client/client.cpp \
 			  $(SRC_DIR)/channel/channel.cpp \
 			  $(SRC_DIR)/message/message.cpp \
-			  $(SRC_DIR)/server/utils.cpp
+			  $(SRC_DIR)/server/utils.cpp \
+			  $(SRC_DIR)/server/commands/invite.cpp $(SRC_DIR)/server/commands/join.cpp $(SRC_DIR)/server/commands/kick.cpp \
+			  $(SRC_DIR)/server/commands/log.cpp $(SRC_DIR)/server/commands/mode.cpp $(SRC_DIR)/server/commands/nick.cpp \
+			  $(SRC_DIR)/server/commands/part.cpp $(SRC_DIR)/server/commands/pass.cpp $(SRC_DIR)/server/commands/ping.cpp \
+			  $(SRC_DIR)/server/commands/privMSG.cpp $(SRC_DIR)/server/commands/quit.cpp $(SRC_DIR)/server/commands/topic.cpp \
+			  $(SRC_DIR)/server/commands/user.cpp $(SRC_DIR)/server/commands/who.cpp 
 
 # Fichiers objets correspondants
 OBJS        = $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
