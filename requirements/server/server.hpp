@@ -103,6 +103,11 @@ class server
 		client* getClientByF(int fd);
 		client* getClientByNick(const std::string& nick);
 		channel* getChannelByName(const std::string& name);
+
+		void broadcastToChannel(channel* ch, const std::string& line);
+    	void removeClientFromChannel(channel* ch, client* cli);
+    	bool channelEmpty(channel* ch) const;
+    	void deleteChannel(channel* ch);
 };
 
 
