@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 11:38:21 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/27 15:18:22 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -313,3 +313,4 @@ void	server::polloutActivate(client* cli)
 	}
 	return;
 }
+
