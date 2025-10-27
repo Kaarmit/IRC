@@ -12,6 +12,20 @@
 
 #include "../server.hpp"
 
+bool isOP(client* cli, channel* ch)
+{
+    const std::list<client*>& opList = ch->getOpList();
+
+    for (std::list<client*>::const_iterator it = opList.begin(); it != opList.end(); ++it)
+    {
+        if (*it == cli)
+            return true;
+    }
+    return false;
+}
+
+
+
 bool	server::handleKick(client* cli, message& msg)
 {
 	
@@ -20,7 +34,7 @@ bool	server::handleKick(client* cli, message& msg)
 
 	if (!cli->getRegistered())
 	{
-        std::string line = ":" + this->_serverName + " 451 " + target + " :You are not registered\r\n";
+        std::string line = ":" + this->_serverName + " 451 " + target + " :You have not registered\r\n";
         cli->enqueueLine(line);
 		polloutActivate(cli);
 		return false;
@@ -36,12 +50,119 @@ bool	server::handleKick(client* cli, message& msg)
         return false;
 	}
 	
-	// 3) salon existe
-	
-	// 4) client est sur le salon
-	
-	// 5) client est operateur du salon
-	
-	// 6) utilisateur cible est sur le salon
-	return true;
+	// 3) split params
+    std::vector<std::string> chanGiven;
+    std::vector<std::string> userToKick;
+    {
+        std::stringstream ss(msg.getParams()[0]);
+        std::string item;
+        while (std::getline(ss, item, ',')) 
+        {
+            // trim des espaces autour
+            // (mini-trim inline sans helper)
+            while (!item.empty() && (item[0] == ' ' || item[0] == '\t')) item.erase(0, 1);
+            while (!item.empty() && (item[item.size()-1] == ' ' || item[item.size()-1] == '\t')) item.erase(item.size()-1);
+
+            if (item.empty()) continue;
+            chanGiven.push_back(item);
+        }
+    }
+    
+    {
+        std::stringstream ss(msg.getParams()[1]);
+        std::string item;
+        while (std::getline(ss, item, ',')) 
+        {
+            // trim des espaces autour
+            // (mini-trim inline sans helper)
+            while (!item.empty() && (item[0] == ' ' || item[0] == '\t')) item.erase(0, 1);
+            while (!item.empty() && (item[item.size()-1] == ' ' || item[item.size()-1] == '\t')) item.erase(item.size()-1);
+
+            if (item.empty()) continue;
+            userToKick.push_back(item);
+        }
+    }
+    
+    if (userToKick.size() != 1 && (userToKick.size() != chanGiven.size()))
+    {
+        std::string line = ":" + _serverName + " 461 " + target + " KICK :Not enough parameters\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+
+    if (chanGiven.empty())
+    {
+        std::string line = ":" + _serverName + " 461 " + target + " KICK :Not enough parameters\r\n";
+        cli->enqueueLine(line);
+        polloutActivate(cli);
+        return false;
+    }
+    
+    
+    for (size_t i = 0; i < chanGiven.size(); i++)
+    {
+        const std::string& chname = chanGiven[i];
+        std::string user;
+        
+        if (userToKick.size() == 1)
+            user = userToKick[0];
+        else
+            user = userToKick[i];
+            
+                if (!server::isChannel(chname))
+        {
+            std::string line = ":" + _serverName + " 476 " + target + " " + chname + " :Bad channel mask\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
+
+        channel* ch = this->getChannelByName(chname);
+        if (!ch)
+        {
+            std::string line = ":" + _serverName + " 403 " + target + " " + chname + " :No such channel\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
+
+        if (!channelHasFd(ch, cli->getFd()))
+        {
+            std::string line = ":" + _serverName + " 442 " + target + " " + chname + " :You're not on that channel\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
+        
+        if (!isOP(cli, ch))
+        {
+            std::string line = ":" + _serverName + " 482 " + target + " " + chname + " :You're not channel operator\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
+        
+        client* tokick = this->getClientByNick(user);
+        
+        if (!tokick)
+        {
+            std::string line = ":" + _serverName + " 401 " + target + " " + user + " :No such nick\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
+        int fd = tokick->getFd();
+
+        if (!channelHasFd(ch, fd))
+        {
+            std::string line = ":" + _serverName + " 441 " + target + " " + user + " " + chname + " :They aren't on that channel\r\n";
+            cli->enqueueLine(line);
+            polloutActivate(cli);
+            continue;
+        }
+        
+        
+    }
+    
 }
