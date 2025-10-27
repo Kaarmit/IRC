@@ -162,3 +162,34 @@ bool	channel::isMember(client* cli) const
 {
 	return std::find(this->_clientsList.begin(), this->_clientsList.end(), cli) != this->_clientsList.end();
 }
+
+const std::string& channel::name() const 
+{ 
+	return _name; 
+}
+
+static void removeFromList(std::list<client*>& lst, client* c)
+{
+    if (!c)
+        return;
+    for (std::list<client*>::iterator it = lst.begin(); it != lst.end(); ++it)
+    {
+        if (*it == c)
+        {
+            lst.erase(it);
+            break;
+        }
+    }
+}
+
+void channel::remove(client* c)
+{
+    removeFromList(_clientsList, c);
+    removeFromList(_operatorsList, c);
+    removeFromList(_invitedList, c);
+}
+
+bool channel::empty() const
+{
+    return _clientsList.empty();
+}
