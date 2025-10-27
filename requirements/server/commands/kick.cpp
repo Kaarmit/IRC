@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   kick.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: terijo <terijo@student.42.fr>              +#+  +:+       +#+        */
+/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:44:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 14:10:13 by terijo           ###   ########.fr       */
+/*   Updated: 2025/10/27 14:27:41 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -164,5 +164,6 @@ bool	server::handleKick(client* cli, message& msg)
         
         
     }
+    return true;
     
 }
