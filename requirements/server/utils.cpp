@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 15:17:07 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 17:27:20 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -192,7 +192,7 @@ void server::broadcastJoin(client* cli, channel& chan)
 			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
 				cli->enqueueLine(line);
-				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor() + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor() + " " + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
 				cli->enqueueLine(line);
 			}
 			for (std::list<client*>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
@@ -237,7 +237,7 @@ void server::sendWelcomeIfRegistrationComplete(client* cli)
 bool	server::basicChecks(client* cli, message& msg)
 {
 	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
-	
+
 	if (cli->getRegistered())
 	{
 		std::string line = ":" + _serverName + " 462 " + target + " :You may not reregister\r\n";

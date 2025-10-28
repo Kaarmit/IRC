@@ -18,9 +18,9 @@ class channel
 
 		std::string				_topic;
 		std::string				_topicWho;
-		std::string				_key;
+		std::string				_key;//mdp du chan
 
-		int						_limit;
+		int						_limit;//limit de user du chan
 
 		bool					_topicStatus;
 		bool					_inviteOnly;

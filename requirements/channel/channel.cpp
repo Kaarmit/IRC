@@ -168,9 +168,9 @@ bool	channel::isOperator(client* cli) const
 	return std::find(this->_operatorsList.begin(), this->_operatorsList.end(), cli) != this->_operatorsList.end();
 }
 
-const std::string& channel::name() const 
-{ 
-	return _name; 
+const std::string& channel::name() const
+{
+	return _name;
 }
 
 static void removeFromList(std::list<client*>& lst, client* c)
