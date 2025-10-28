@@ -9,12 +9,13 @@
 /*   Updated: 2025/10/27 15:24:39 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
 #include "../server.hpp"
 
 bool	server::handleQuit(client* cli, message& msg)
 {
 	
+	if (!cli)
+		return false;
 	if(msg.getParams().empty())
 	{
 		std::string	error = ":" + this->_serverName + " 461 * :Not enough parameters\r\n";
@@ -23,14 +24,47 @@ bool	server::handleQuit(client* cli, message& msg)
 		// std::cout << "LOG: return false dans pass() a la verif 1" << std::endl;
 		return false;
 	}
+	
+	std::string reason;
+	if (msg.getParams().size() >= 2)
+	{
+		std::string message = msg.getParams()[1];
+		for (size_t i = 1; i < msg.getParams().size(); i++)
+		{
+			message += " " + msg.getParams()[i];
+			if (!message.empty() && message[0] == ':')
+                message.erase(0, 1);
 
+            while (!message.empty() && (message[0] == ' ' || message[0] == '\t')) message.erase(0,1);
+
+            if (!message.empty())
+            reason = " :" + message;
+		}
+	}
+
+	for (std::list<channel*>::const_iterator it = _channels.begin(); it != _channels.end(); it++)
+	{
+		removeClientFromChannel((*it), cli);
+		std::string msgToChan;
+		if (reason.size() > 0)
+			msgToChan = userPrefix(cli) + "QUIT" + reason + "\r\n";
+		else 
+			msgToChan = userPrefix(cli) + "QUIT" + "\r\n";
+		broadcastToChannel((*it), msgToChan);
+		std::string msgToClient;
+		msgToClient = "ERROR :Closing Link: " + cli->getNick() + reason + "\r\n";
+		if ((*it)->isOperator(cli))
+			//remove
+		
+		
+		
+		//retirer liste MOD
+		//supprimer channel si vide 
+	}
 	
 	
-	// iterer sur cli channelList
-	// it->getClientList().remove(*cli);
-	// it->getOpList().remove(*cli);
-	// cli->channelList().remove(it);
-	//verifier si ct le dernier client du channel, si oui enlever le channel de la liste de chan serv
+	
+
 	//reset le channelAuthor pointeur a NULL
 	//deco le client du server
 	(void)cli; (void)msg;
