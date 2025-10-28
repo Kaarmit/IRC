@@ -53,7 +53,7 @@ bool	server::handleQuit(client* cli, message& msg)
 		broadcastToChannel((*it), msgToChan);
 		std::string msgToClient;
 		msgToClient = "ERROR :Closing Link: " + cli->getNick() + reason + "\r\n";
-		if ((*it)->isOperator(cli))
+		if (isOP(cli,(*it)))
 			//remove
 		
 		
