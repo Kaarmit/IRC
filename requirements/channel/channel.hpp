@@ -65,6 +65,7 @@ class channel
 
 		bool					isInviteOnly(void) const;
 		void					setInviteOnly(bool newStatus);
+		void					addToInviteList(client*);
 
 		std::string				getKey(void) const;
 		void					setKey(std::string newKey);
@@ -74,6 +75,7 @@ class channel
 		bool					operator!=(const channel& rhs) const;
 
 		bool					isMember(client* cli) const;
+		bool					isOperator(client* cli) const;
 
 		void 					remove(client *c);
     	// Vrai si plus aucun membre

@@ -163,6 +163,11 @@ bool	channel::isMember(client* cli) const
 	return std::find(this->_clientsList.begin(), this->_clientsList.end(), cli) != this->_clientsList.end();
 }
 
+bool	channel::isOperator(client* cli) const
+{
+	return std::find(this->_operatorsList.begin(), this->_operatorsList.end(), cli) != this->_operatorsList.end();
+}
+
 const std::string& channel::name() const 
 { 
 	return _name; 
@@ -192,4 +197,12 @@ void channel::remove(client* c)
 bool channel::empty() const
 {
     return _clientsList.empty();
+}
+
+void	channel::addToInviteList(client* cli)
+{
+	if (!cli)
+		return;
+	if (std::find(this->_invitedList.begin(), this->_invitedList.end(), cli) == this->_invitedList.end())
+		this->_invitedList.push_back(cli);
 }
