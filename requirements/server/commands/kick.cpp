@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:44:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 15:26:01 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 15:07:57 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,7 +113,7 @@ bool	server::handleKick(client* cli, message& msg)
             continue;
         }
 
-        if (!channelHasFd(ch, cli->getFd()))
+        if (!ch->isMember(cli))
         {
             std::string line = ":" + _serverName + " 442 " + target + " " + chname + " :You're not on that channel\r\n";
             cli->enqueueLine(line);
