@@ -3,19 +3,19 @@
 /*                                                        :::      ::::::::   */
 /*   kick.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:44:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 15:17:33 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 18:36:34 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../server.hpp"
+#include "../../server.hpp"
 
 bool	server::handleKick(client* cli, message& msg)
 {
-	
-	// 1) registered ? 
+
+	// 1) registered ?
 	const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
 
 	if (!cli->getRegistered())
@@ -25,7 +25,7 @@ bool	server::handleKick(client* cli, message& msg)
 		polloutActivate(cli);
 		return false;
 	}
-	
+
 	// 2) nombres de params insuffisant
 	std::vector<std::string>	params = msg.getParams();
 	if (params.size() != 2 && params.size() != 3)
@@ -35,14 +35,14 @@ bool	server::handleKick(client* cli, message& msg)
         polloutActivate(cli);
         return false;
 	}
-	
+
 	// 3) split params
     std::vector<std::string> chanGiven;
     std::vector<std::string> userToKick;
     {
         std::stringstream ss(msg.getParams()[0]);
         std::string item;
-        while (std::getline(ss, item, ',')) 
+        while (std::getline(ss, item, ','))
         {
             // trim des espaces autour
             // (mini-trim inline sans helper)
@@ -53,11 +53,11 @@ bool	server::handleKick(client* cli, message& msg)
             chanGiven.push_back(item);
         }
     }
-    
+
     {
         std::stringstream ss(msg.getParams()[1]);
         std::string item;
-        while (std::getline(ss, item, ',')) 
+        while (std::getline(ss, item, ','))
         {
             // trim des espaces autour
             // (mini-trim inline sans helper)
@@ -68,7 +68,7 @@ bool	server::handleKick(client* cli, message& msg)
             userToKick.push_back(item);
         }
     }
-    
+
     if (userToKick.size() != 1 && (userToKick.size() != chanGiven.size()))
     {
         std::string line = ":" + _serverName + " 461 " + target + " KICK :Not enough parameters\r\n";
@@ -84,18 +84,18 @@ bool	server::handleKick(client* cli, message& msg)
         polloutActivate(cli);
         return false;
     }
-    
-   
+
+
     std::string user;
     for (size_t i = 0; i < chanGiven.size(); i++)
     {
         const std::string& chname = chanGiven[i];
-        
+
         if (userToKick.size() == 1)
             user = userToKick[0];
         else
             user = userToKick[i];
-            
+
                 if (!server::isChannel(chname))
         {
             std::string line = ":" + _serverName + " 476 " + target + " " + chname + " :Bad channel mask\r\n";
@@ -120,7 +120,7 @@ bool	server::handleKick(client* cli, message& msg)
             polloutActivate(cli);
             continue;
         }
-        
+
         if (!isOP(cli, ch))
         {
             std::string line = ":" + _serverName + " 482 " + target + " " + chname + " :You're not channel operator\r\n";
@@ -128,9 +128,9 @@ bool	server::handleKick(client* cli, message& msg)
             polloutActivate(cli);
             continue;
         }
-        
+
         client* tokick = this->getClientByNick(user);
-        
+
         if (!tokick)
         {
             std::string line = ":" + _serverName + " 401 " + target + " " + user + " :No such nick\r\n";
@@ -147,8 +147,8 @@ bool	server::handleKick(client* cli, message& msg)
             polloutActivate(cli);
             continue;
         }
-        
-        std::string comment; 
+
+        std::string comment;
         if (params.size() > 2)
         {
             std::string joined = msg.getParams()[2];
@@ -163,9 +163,9 @@ bool	server::handleKick(client* cli, message& msg)
             if (!joined.empty())
             comment = " :" + joined;
         }
-        else 
+        else
             comment = " :" + target;
-        
+
         const std::string prefix = userPrefix(cli);
         std::string line = prefix + " KICK " + chname + " " + user + comment + "\r\n";
         broadcastToChannel(ch, line);
@@ -174,5 +174,5 @@ bool	server::handleKick(client* cli, message& msg)
             deleteChannel(ch);
     }
     return true;
-    
+
 }

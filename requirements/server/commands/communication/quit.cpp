@@ -3,18 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   quit.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:46:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 15:13:36 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 18:36:24 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../server.hpp"
+#include "../../server.hpp"
 
 bool	server::handleQuit(client* cli, message& msg)
 {
-	
+
 	if (!cli)
 		return false;
 	if(msg.getParams().empty())
@@ -25,7 +25,7 @@ bool	server::handleQuit(client* cli, message& msg)
 		// std::cout << "LOG: return false dans pass() a la verif 1" << std::endl;
 		return false;
 	}
-	
+
 	std::string reason;
 	if (msg.getParams().size() >= 2)
 	{
@@ -49,20 +49,20 @@ bool	server::handleQuit(client* cli, message& msg)
 		std::string msgToChan;
 		if (reason.size() > 0)
 			msgToChan = userPrefix(cli) + "QUIT" + reason + "\r\n";
-		else 
+		else
 			msgToChan = userPrefix(cli) + "QUIT" + "\r\n";
 		broadcastToChannel((*it), msgToChan);
 		std::string msgToClient;
 		msgToClient = "ERROR :Closing Link: " + cli->getNick() + reason + "\r\n";
 
-		
-		
+
+
 		//retirer liste MOD
-		//supprimer channel si vide 
+		//supprimer channel si vide
 	}
-	
-	
-	
+
+
+
 
 	//reset le channelAuthor pointeur a NULL
 	//deco le client du server

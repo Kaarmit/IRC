@@ -6,11 +6,11 @@
 /*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:45:03 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 17:24:54 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/28 18:36:31 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../server.hpp"
+#include "../../server.hpp"
 
 bool	server::handleInvite(client* cli, message& msg)
 {

@@ -1,26 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   handlencik.cpp                                     :+:      :+:    :+:   */
+/*   nick.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:39:58 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 11:40:30 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 18:35:54 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../server.hpp"
+#include "../../server.hpp"
 
 bool server::handleNick(client* cli, message& msg)
 {
     const std::string target = cli->getNick().empty() ? "*" : cli->getNick();
 
-	
+
 	if (!basicChecks(cli, msg))
 		return false;
     const std::string requested = msg.getParams().back();
-	
+
 
     if (!isValidNick(requested))
     {
@@ -46,7 +46,7 @@ bool server::handleNick(client* cli, message& msg)
     if (cli->getRegistered() && hadNick && oldNick != requested)
         broadcastNickChange(cli, oldNick, requested);
 
-    if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
+    if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty() && !cli->getPass().empty())
 		sendWelcomeIfRegistrationComplete(cli);
 
 	// std::cout << "LOG: TA GRAND MERE PASSe DANS NICK" << std::endl;

@@ -3,14 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   part.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:42:15 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 15:17:52 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 18:36:14 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../server.hpp"
+#include "../../server.hpp"
 
 bool server::handlePart(client *cli, message &msg)
 {

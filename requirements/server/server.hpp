@@ -62,12 +62,10 @@ class server
 		bool	handleNick(client* cli, message& msg);
 		bool	handlePart(client* cli, message& msg);
 		bool	handlePass(client* cli, message& msg);
-		bool	handlePing(client* cli, message& msg);
 		bool	handlePrivmsg(client* cli, message& msg);
 		bool	handleQuit(client* cli, message& msg);
 		bool	handleTopic(client* cli, message& msg);
 		bool	handleUser(client* cli, message& msg);
-		bool	handleWho(client* cli, message& msg);
 		/*---*/
 
 		/*signaux*/
