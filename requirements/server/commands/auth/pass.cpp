@@ -6,11 +6,11 @@
 /*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:39:27 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 17:30:24 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/28 18:35:59 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../server.hpp"
+#include "../../server.hpp"
 
 bool	server::handlePass(client* cli, message& msg)
 {
@@ -49,5 +49,8 @@ bool	server::handlePass(client* cli, message& msg)
 	}
 	//si tout opk, on set le pass a true ou return true
 	cli->setPass(msg.getParams()[0]);
+
+	if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty() && !cli->getPass().empty())
+		sendWelcomeIfRegistrationComplete(cli);
 	return true;
 }

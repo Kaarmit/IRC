@@ -110,12 +110,10 @@ void	server::initCmdServer()
 	this->_cmdList["NICK"] = &server::handleNick;
 	this->_cmdList["PART"] = &server::handlePart;
 	this->_cmdList["PASS"] = &server::handlePass;
-	this->_cmdList["PING"] = &server::handlePing;
 	this->_cmdList["PRIVMSG"] = &server::handlePrivmsg;
 	this->_cmdList["QUIT"] = &server::handleQuit;
 	this->_cmdList["TOPIC"] = &server::handleTopic;
 	this->_cmdList["USER"] = &server::handleUser;
-	this->_cmdList["WHO"] = &server::handleWho;
 }
 
 /*-------------------------------------------------*/
@@ -346,7 +344,7 @@ void	server::initStopSignal(void) {
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGUSR2, &sa, NULL);
-	signal(SIGPIPE, SIG_IGN); // a checker 
+	signal(SIGPIPE, SIG_IGN); // a checker
 
 }
 
@@ -408,7 +406,7 @@ void server::run()
 		for (std::vector<pollfd>::iterator itPollFd = this->_fds.begin(); itPollFd != this->_fds.end(); ++itPollFd)
 		{
 			client* itClient = this->getClientByF(itPollFd->fd);//remplacer par ca pour ne pas utiliser un iterator (?)
-			if (!itClient && itPollFd != this->_fds.begin()) 
+			if (!itClient && itPollFd != this->_fds.begin())
 			{
    				 toRemove.push_back(itPollFd->fd);
    				 continue;
@@ -435,7 +433,7 @@ void server::run()
 					while (true) // en 'rafale'
 					{
 						std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans while true"  << std::endl;
-						
+
                     	struct sockaddr_storage clientAddr;
                     	socklen_t addrLen = sizeof(clientAddr);
 						int clientFd;
