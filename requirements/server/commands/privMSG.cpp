@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   handleprivMSG.cpp                                  :+:      :+:    :+:   */
+/*   privMSG.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:42:59 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 11:43:08 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 17:41:56 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 bool	server::handlePrivmsg(client* cli, message& msg)
 {
-	
+
 	if (!cli->getRegistered())
 	{
 		std::string error = ":server 451 * : You have not registered\r\n";
@@ -32,7 +32,7 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 		polloutActivate(cli);
 		return false;
 	}
-	
+
 	//ereur 412 si pas de message
 	if (params.size() < 2)
 	{
@@ -97,7 +97,7 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 			return false;
 		}
 		//construiruction du message
-		std::string	toSend = userPrefix(cli) + " " + msg.getCommand() + " " + params[0] + " " + " :" + params[1];
+		std::string	toSend = userPrefix(cli) + " " + msg.getCommand() + " " + params[0] + " " + " :" + params[1] + "\r\n";
 		//envoie du message au destinataire
 		//on boucle sur tous les membres du channel
 		for (std::list<client*>::iterator it = destChannel->getClientList().begin(); it != destChannel->getClientList().end(); it++)

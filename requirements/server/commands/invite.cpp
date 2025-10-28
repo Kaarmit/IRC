@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   invite.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: terijo <terijo@student.42.fr>              +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:45:03 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 16:35:11 by terijo           ###   ########.fr       */
+/*   Updated: 2025/10/28 17:24:54 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ bool	server::handleInvite(client* cli, message& msg)
         polloutActivate(cli);
         return false;
 	}
-	
+
 	//si le chan existe pas on envoie quand meme les invite
 	channel* chan = this->getChannelByName(channelName);
 	if (chan)
@@ -74,14 +74,14 @@ bool	server::handleInvite(client* cli, message& msg)
 		}
 		chan->addToInviteList(user);
 	}
-	
+
 	//on envoie la reponse au cli qui invite
 	std::string	answer = ":" + this->_serverName + " 341 " + cli->getNick() + " " + nickToInvite + " " + channelName + "\r\n";
     cli->enqueueLine(answer);
 	polloutActivate(cli);
 
 	//on envoie l'invite au user
-	std::string inviteMsg = ":" + userPrefix(cli) + " INVITE " + nickToInvite + " " + channelName + "\r\n";
+	std::string inviteMsg = userPrefix(cli) + " INVITE " + nickToInvite + " " + channelName + "\r\n";
     user->enqueueLine(inviteMsg);
     polloutActivate(user);
 	return true;
