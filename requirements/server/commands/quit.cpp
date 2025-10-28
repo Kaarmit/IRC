@@ -6,9 +6,10 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:46:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 15:24:39 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 15:13:36 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 #include "../server.hpp"
 
 bool	server::handleQuit(client* cli, message& msg)
@@ -44,7 +45,7 @@ bool	server::handleQuit(client* cli, message& msg)
 
 	for (std::list<channel*>::const_iterator it = _channels.begin(); it != _channels.end(); it++)
 	{
-		removeClientFromChannel((*it), cli);
+		(*it)->remove(cli);
 		std::string msgToChan;
 		if (reason.size() > 0)
 			msgToChan = userPrefix(cli) + "QUIT" + reason + "\r\n";
@@ -53,9 +54,7 @@ bool	server::handleQuit(client* cli, message& msg)
 		broadcastToChannel((*it), msgToChan);
 		std::string msgToClient;
 		msgToClient = "ERROR :Closing Link: " + cli->getNick() + reason + "\r\n";
-		if (isOP(cli,(*it)))
-			//remove
-		
+
 		
 		
 		//retirer liste MOD

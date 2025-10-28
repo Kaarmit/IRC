@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:44:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 15:07:57 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 15:17:33 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -169,7 +169,7 @@ bool	server::handleKick(client* cli, message& msg)
         const std::string prefix = userPrefix(cli);
         std::string line = prefix + " KICK " + chname + " " + user + comment + "\r\n";
         broadcastToChannel(ch, line);
-        removeClientFromChannel(ch, tokick);
+        ch->remove(tokick);
         if (channelEmpty(ch))
             deleteChannel(ch);
     }

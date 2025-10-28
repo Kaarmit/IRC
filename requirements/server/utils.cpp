@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/27 15:25:32 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 15:17:07 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -273,11 +273,11 @@ void server::broadcastToChannel(channel* ch, const std::string& line)
 }
 
 // Retire le client du salon (de toutes les "rôles"/listes), via channel::remove(fd)
-void server::removeClientFromChannel(channel* ch, client* cli)
-{
-    if (!ch || !cli) return;
-    ch->remove(cli);
-}
+// void server::removeClientFromChannel(channel* ch, client* cli)
+// {
+//     if (!ch || !cli) return;
+//     ch->remove(cli);
+// }
 
 bool server::channelEmpty(channel* ch) const
 {

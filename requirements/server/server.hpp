@@ -104,7 +104,7 @@ class server
 		channel* getChannelByName(const std::string& name);
 
 		void broadcastToChannel(channel* ch, const std::string& line);
-    	void removeClientFromChannel(channel* ch, client* cli);
+    	//void removeClientFromChannel(channel* ch, client* cli);
     	bool channelEmpty(channel* ch) const;
     	void deleteChannel(channel* ch);
 };

@@ -189,6 +189,7 @@ static void removeFromList(std::list<client*>& lst, client* c)
 
 void channel::remove(client* c)
 {
+	if (!c) return;
     removeFromList(_clientsList, c);
     removeFromList(_operatorsList, c);
     removeFromList(_invitedList, c);

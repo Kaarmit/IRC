@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:42:15 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 15:08:21 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/28 15:17:52 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,7 +131,7 @@ bool server::handlePart(client *cli, message &msg)
         broadcastToChannel(ch, line); // -> helper à avoir; cf. note ci-dessous
 
         // b) Retirer le client du salon (membre, op, voice, etc.)
-        removeClientFromChannel(ch, cli); // -> helper à avoir; cf. note ci-dessous
+        ch->remove(cli); // -> helper à avoir; cf. note ci-dessous
 
         // c) Si salon vide, suppression côté serveur
         if (channelEmpty(ch))
