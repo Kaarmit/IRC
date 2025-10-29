@@ -17,9 +17,11 @@ channel::channel(std::string name, client* creator)
 	this->_topic.clear();
 	this->_topicTimeStamp = 0;
 	this->_limit = -1;
+	this->_hasLimit = false;
 	this->_inviteOnly = false;
 	this->_invitedList.clear();
 	this->_key.clear();
+	this->_protectedByKey = false;
 	this->_topicWho.clear();
 	return;
 }
@@ -108,12 +110,21 @@ void					channel::setTopicTimestamp(void)
 	this->_topicTimeStamp = time(NULL);
 }
 
+bool					channel::isLimited() const
+{
+	return this->_hasLimit;
+}
+
 int						channel::getLimit(void) const
 {
 	return (this->_limit);
 }
 void					channel::setLimit(int newLimit)
 {
+	if (newLimit == -1)
+		this->_hasLimit = false;
+	else
+		this->_hasLimit = true;
 	this->_limit = newLimit;
 }
 
@@ -133,6 +144,11 @@ std::list<client*>&		channel::getInvitedList(void)
 	return (this->_invitedList);
 }
 
+bool					channel::isProtected() const
+{
+	return this->_protectedByKey;
+}
+
 std::string				channel::getKey(void) const
 {
 	return (this->_key);
@@ -140,7 +156,16 @@ std::string				channel::getKey(void) const
 
 void					channel::setKey(std::string newKey)
 {
-	this->_key = newKey;
+	if (!newKey.empty())
+	{
+		this->_key = newKey;
+		this->_protectedByKey = true;
+	}
+	else
+	{
+		this->_key = "";
+		this->_protectedByKey = false;
+	}
 }
 
 std::list<client*>&		channel::getOpList(void)
@@ -206,4 +231,51 @@ void	channel::addToInviteList(client* cli)
 		return;
 	if (std::find(this->_invitedList.begin(), this->_invitedList.end(), cli) == this->_invitedList.end())
 		this->_invitedList.push_back(cli);
+}
+
+std::string	channel::getMode() const
+{
+	std::string	str = "+";
+	std::string	params = "";
+
+	if (this->isInviteOnly())
+		str.push_back('i');
+	if (this->isRestrictedTopic())
+		str.push_back('t');
+	if (this->isProtected())
+	{
+		str.push_back('k');
+		params += " " + this->getKey();
+	}
+	if (this->isLimited())
+	{
+		str.push_back('l');
+		std::stringstream	oss;
+		oss << this->getLimit();
+		params += " " + oss.str();
+	}
+
+	if (str.size() == 1)
+		str.clear();
+
+	return str + params;
+}
+
+void	channel::setOperator(client* cli)
+{
+	this->_operatorsList.push_back(cli);
+}
+
+void	channel::removeOperator(client* cli)
+{
+	  if (!cli)
+        return;
+    for (std::list<client*>::iterator it = _operatorsList.begin(); it != _operatorsList.end(); ++it)
+    {
+        if (*it == cli)
+        {
+            _operatorsList.erase(it);
+            break;
+        }
+    }
 }
