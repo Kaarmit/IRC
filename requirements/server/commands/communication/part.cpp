@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   part.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:42:15 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 18:36:14 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/29 15:21:40 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,7 +116,7 @@ bool server::handlePart(client *cli, message &msg)
             trailing = " :" + joined;    // ajoute exactement un " :"
     }
 
-    // --- 5) Broadcast PART, retirer le client, supprimer le salon si vide
+    // --- 5) Broadcast PART, retfor (std::list<client*>::const_iterator itC = members.begin(); itC != members.end(); itC++)irer le client, supprimer le salon si vide
     const std::string prefix = userPrefix(cli);
 
     for (size_t i = 0; i < validChan.size(); ++i)

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   mode.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:45:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 19:24:31 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/29 15:55:08 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,29 +77,29 @@ bool	server::handleMode(client* cli, message& msg)
 			return false;
 		}
 
-		int		paramsIndex = 0;
+		//int		paramsIndex = 0;
 		for (size_t i = 1; i < strMode.size(); i++)
 		{
-			char	letter = strMode[i];
+			//char	letter = strMode[i];
 
 			//process les modes
-			if (letter == 'i')
-				inviteMode(chan, sign);
-			else if (letter == 't')
-				topicMode(chan, sign);
-			else  if(letter == 'k')
-				keyMode(chan, sign, msg.getParams(), paramsIndex);
-			else if (letter == 'o')
-				operatorMode(chan, sign, msg.getParams(), paramsIndex);
-			else if (letter == 'l')
-				limitMode(chan, sign, msg.getParams(), paramsIndex);
-			else
-			{
-				std::string error = ":" + this->_serverName + " 472 " + cli->getNick() + " " + strChan + " " + letter +" :is unknow mode char\r\n";
-				cli->enqueueLine(error);
-				polloutActivate(cli);
-				return false;
-			}
+			// if (letter == 'i')
+			// 	inviteMode(chan, sign);
+			// else if (letter == 't')
+			// 	topicMode(chan, sign);
+			// else  if(letter == 'k')
+			// 	keyMode(chan, sign, msg.getParams(), paramsIndex);
+			// else if (letter == 'o')
+			// 	operatorMode(chan, sign, msg.getParams(), paramsIndex);
+			// else if (letter == 'l')
+			// 	limitMode(chan, sign, msg.getParams(), paramsIndex);
+			// else
+			// {
+			// 	std::string error = ":" + this->_serverName + " 472 " + cli->getNick() + " " + strChan + " " + letter +" :is unknow mode char\r\n";
+			// 	cli->enqueueLine(error);
+			// 	polloutActivate(cli);
+			// 	return false;
+			// }
 
 		//broadcast le changement dans le channel
 		std::string str = userPrefix(cli) + " MODe " + strChan + " :" + strMode + "\r\n";

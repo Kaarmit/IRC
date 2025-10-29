@@ -6,7 +6,7 @@
 /*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:46:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/29 14:41:56 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/29 15:49:25 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,55 +16,70 @@ bool	server::handleQuit(client* cli, message& msg)
 {
 	
 	if (!cli)
-		return false;
-	if(msg.getParams().empty())
+		return false;	
+	std::string reason = "Client Quit";
+
+	if (!msg.getParams().empty()) 
 	{
-		std::string	error = ":" + this->_serverName + " 461 * :Not enough parameters\r\n";
-		cli->enqueueLine(error);
-		polloutActivate(cli);
-		// std::cout << "LOG: return false dans pass() a la verif 1" << std::endl;
-		return false;
+		std::string r = msg.getParams()[0];
+
+		// Enlève le ':' de début (trailing param)
+		if (!r.empty() && r[0] == ':')
+			r.erase(0, 1);
+
+		// Trim des espaces/tabs au début
+		while (!r.empty() && (r[0] == ' ' || r[0] == '\t'))
+			r.erase(0, 1);
+
+		// Supprime les \r et \n internes
+		r.erase(std::remove(r.begin(), r.end(), '\r'), r.end());
+		r.erase(std::remove(r.begin(), r.end(), '\n'), r.end());
+
+		// Si après tout ça il reste quelque chose
+		if (!r.empty())
+			reason = r;
 	}
+
+
+	const std::string message = ":" + userPrefix(cli) + " QUIT :" + reason + "\r\n";
 	
-	std::string reason;
-	if (msg.getParams().size() >= 2)
-	{
-		std::string message = msg.getParams()[1];
-		for (size_t i = 1; i < msg.getParams().size(); i++)
-		{
-			message += " " + msg.getParams()[i];
-			if (!message.empty() && message[0] == ':')
-                message.erase(0, 1);
-
-            while (!message.empty() && (message[0] == ' ' || message[0] == '\t')) message.erase(0,1);
-
-            if (!message.empty())
-            reason = " :" + message;
-		}
-	}
-
+	std::list<client*> membersToSend;
+	std::vector<channel*> toDelete;
+	
 	for (std::list<channel*>::const_iterator it = _channels.begin(); it != _channels.end(); it++)
 	{
-		(*it)->remove(cli);
-		std::string msgToChan;
-		if (reason.size() > 0)
-			msgToChan = userPrefix(cli) + "QUIT" + reason + "\r\n";
-		else 
-			msgToChan = userPrefix(cli) + "QUIT" + "\r\n";
-		broadcastToChannel((*it), msgToChan);
-		std::string msgToClient;
-		msgToClient = "ERROR :Closing Link: " + cli->getNick() + reason + "\r\n";
-		if ((*it)->empty())
-			deleteChannel(*it);
+		channel* ch = *it;
+		if (!ch)
+			continue;
+			
+		if (!channelHasFd((ch), cli->getFd()))
+			continue;
+			
+		const std::list<client*>& members = ch->getClientList();
+		for (std::list<client*>::const_iterator itC = members.begin(); itC != members.end(); itC++)
+		{
+			client * c = *itC;
+			if (c && c->getFd() != cli->getFd() && (std::find(membersToSend.begin(), membersToSend.end(), c) == membersToSend.end())
+)
+				membersToSend.push_back(c);
+		}
+		(ch)->remove(cli);
+		if (ch->empty())
+			toDelete.push_back(ch);	
 	}
+	
+	for (std::list<client*>::const_iterator itC = membersToSend.begin(); itC != membersToSend.end(); itC++)
+	{
+		(*itC)->enqueueLine(message);
+		polloutActivate(*itC);
+	}
+	
+	for (std::size_t i = 0; i < toDelete.size(); ++i) 
+        deleteChannel(toDelete[i]);
+		
+	std::string err = "ERROR :Closing Link: " + cli->getNick() + " (" + reason + ")\r\n";
+	cli->enqueueLine(err);
+	polloutActivate(cli);
     cli->setToRemove(true);
-	
-	
-	// si on supprime le client trop tot on ne broadcast a personne
-    // si le supprime trop tard on broadcast a ce client egalement ce qui n'est pas bon
-    // si le client partage plusieurs channel avec certains clients, ils vont recevoir le message de depart en doublon ce qui apparement n'est pas bon
-	
-	//deco le client du server
-	(void)cli; (void)msg;
 	return true;
 }
