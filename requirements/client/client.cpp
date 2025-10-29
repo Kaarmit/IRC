@@ -7,6 +7,7 @@ client::client(void)
 
 client::client(int clientFd): _fd(clientFd) {
 	this->_registered = false;
+	this->_toRemove = false;
 	this->_fullMessage = "";
 	this->_msg.clearMessage();
 	this->_serverName = "";
@@ -178,6 +179,15 @@ size_t& client::getBytesSent() {
 void client::setBytesSent(size_t value)
 {
 	_bytesSent = value;
+}
+
+bool client::getToRemove()
+{
+	return _toRemove;
+}
+void	client::setToRemove(bool value)
+{
+	this->_toRemove = value;
 }
 
 double	client::getTime() const

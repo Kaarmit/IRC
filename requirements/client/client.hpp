@@ -13,6 +13,7 @@ class client
 		int 						_fd;
 
 		bool 						_registered;
+		bool						_toRemove;
 
 		time_t						_connexionTime;
 
@@ -78,6 +79,9 @@ class client
     	size_t& 					getBytesSent();
     	size_t 						getBytesSent() const;
 		void 						setBytesSent(size_t value);
+		
+		bool						getToRemove();
+		void						setToRemove(bool value);
 		
 		double						getTime() const;
 

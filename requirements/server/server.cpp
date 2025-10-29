@@ -535,7 +535,10 @@ void server::run()
 									msg.clearMessage();
 								}
                             }
+							if (itClient->getToRemove() == true)
+								toRemove.push_back(itPollFd->fd);
                             break;
+							
                     }
                 }
             }

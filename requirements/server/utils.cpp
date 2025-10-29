@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 17:27:20 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/29 10:59:52 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -257,18 +257,34 @@ bool	server::basicChecks(client* cli, message& msg)
 	return true;
 }
 
+// void server::broadcastToChannel(channel* ch, const std::string& line)
+// {
+//     // Diffuse à tous les membres du salon (détectés via channelHasFd)
+//     for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+//     {
+//         client* c = *it;
+//         if (!c) continue;
+//         if (channelHasFd(ch, c->getFd()))
+//         {
+//             c->enqueueLine(line);
+//             polloutActivate(c);
+//         }
+//     }
+// }
+
+
 void server::broadcastToChannel(channel* ch, const std::string& line)
 {
-    // Diffuse à tous les membres du salon (détectés via channelHasFd)
-    for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+    if (!ch) return;
+
+    // Itérer sur les membres du channel (pas server::_clients)
+    std::list<client*>& members = ch->getClientList();
+    for (std::list<client*>::iterator it = members.begin(); it != members.end(); ++it)
     {
         client* c = *it;
         if (!c) continue;
-        if (channelHasFd(ch, c->getFd()))
-        {
-            c->enqueueLine(line);
-            polloutActivate(c);
-        }
+        c->enqueueLine(line);
+        polloutActivate(c);
     }
 }
 

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   quit.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:46:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 18:36:24 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/29 14:41:56 by aarmitan         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 bool	server::handleQuit(client* cli, message& msg)
 {
-
+	
 	if (!cli)
 		return false;
 	if(msg.getParams().empty())
@@ -25,7 +25,7 @@ bool	server::handleQuit(client* cli, message& msg)
 		// std::cout << "LOG: return false dans pass() a la verif 1" << std::endl;
 		return false;
 	}
-
+	
 	std::string reason;
 	if (msg.getParams().size() >= 2)
 	{
@@ -49,22 +49,21 @@ bool	server::handleQuit(client* cli, message& msg)
 		std::string msgToChan;
 		if (reason.size() > 0)
 			msgToChan = userPrefix(cli) + "QUIT" + reason + "\r\n";
-		else
+		else 
 			msgToChan = userPrefix(cli) + "QUIT" + "\r\n";
 		broadcastToChannel((*it), msgToChan);
 		std::string msgToClient;
 		msgToClient = "ERROR :Closing Link: " + cli->getNick() + reason + "\r\n";
-
-
-
-		//retirer liste MOD
-		//supprimer channel si vide
+		if ((*it)->empty())
+			deleteChannel(*it);
 	}
-
-
-
-
-	//reset le channelAuthor pointeur a NULL
+    cli->setToRemove(true);
+	
+	
+	// si on supprime le client trop tot on ne broadcast a personne
+    // si le supprime trop tard on broadcast a ce client egalement ce qui n'est pas bon
+    // si le client partage plusieurs channel avec certains clients, ils vont recevoir le message de depart en doublon ce qui apparement n'est pas bon
+	
 	//deco le client du server
 	(void)cli; (void)msg;
 	return true;
