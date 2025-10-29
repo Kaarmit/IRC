@@ -22,8 +22,10 @@ class channel
 
 		int						_limit;//limit de user du chan
 
-		bool					_topicStatus;
 		bool					_inviteOnly;
+		bool					_topicStatus;
+		bool					_protectedByKey;
+		bool					_hasLimit;
 
 		time_t					_topicTimeStamp;
 		channel(void);
@@ -60,6 +62,7 @@ class channel
 		std::string				getTopicTimestampStr(void) const;
 		void					setTopicTimestamp(void);
 
+		bool					isLimited() const;
 		int						getLimit(void) const;
 		void					setLimit(int newLimit);
 
@@ -67,6 +70,7 @@ class channel
 		void					setInviteOnly(bool newStatus);
 		void					addToInviteList(client*);
 
+		bool					isProtected() const;
 		std::string				getKey(void) const;
 		void					setKey(std::string newKey);
 
@@ -76,6 +80,8 @@ class channel
 
 		bool					isMember(client* cli) const;
 		bool					isOperator(client* cli) const;
+		void					setOperator(client* cli);
+		void					removeOperator(client* cli);
 
 		void 					remove(client *c);
     	// Vrai si plus aucun membre
@@ -83,9 +89,10 @@ class channel
     	// Nom public du salon (ex: "#42")
     	const std::string& 		name() const;
 
+		std::string				getMode() const;
+
 		//peut faire des fonctions void addMember(client* cli) et void removeMember(client* cli) ici
 
 };
-
 
 #endif
