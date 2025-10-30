@@ -34,9 +34,9 @@ class server
 		std::list<channel*>											_channels;
 		std::map<std::string, bool (server::*)(client*, message&)>	_cmdList;
 		std::string													_passWord;
-		std::string													_serverName;
 		int															_serverFd;
 		char*														_port;
+		std::string													_serverName;
 
 		/*Utils*/
 		void	polloutActivate(client* cli);
