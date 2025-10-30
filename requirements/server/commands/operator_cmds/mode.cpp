@@ -6,7 +6,7 @@
 /*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:45:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/29 17:16:39 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/30 14:49:28 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ static bool	keyMode(channel* chan, char sign, std::vector<std::string> &message,
 {
 	if (sign == '+')
 	{
-		std::cout << "LOG : key=" << message[paramsIndex] << std::endl;
+		// std::cout << "LOG : key=" << message[paramsIndex] << std::endl;
 		if (message[paramsIndex].empty())
 			return false;
 		chan->setKey(message[paramsIndex]);

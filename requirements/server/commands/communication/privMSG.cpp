@@ -6,7 +6,7 @@
 /*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:42:59 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 18:36:19 by daavril          ###   ########.fr       */
+/*   Updated: 2025/10/30 15:57:40 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,7 +91,7 @@ bool	server::handlePrivmsg(client* cli, message& msg)
 		//erreur 404 si ce n'est pas le cas et si channel en mode +m et user not operateur
 		if (!destChannel->isMember(cli))
 		{
-			std::string error = ":server 404 " + cli->getNick() + " :User doesn't belongs to " + params[0] + "\r\n";
+			std::string error = ":server 404 " + cli->getNick() + " :Cannot send to channel " + params[0] + "\r\n";
 			cli->enqueueLine(error);
 			polloutActivate(cli);
 			return false;

@@ -426,13 +426,13 @@ void server::run()
     		}
 			if (itPollFd->revents & POLLIN)
 			{
-				std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
+				// std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
                 if (itPollFd == this->_fds.begin()) // signal sur socket serv = nouvelle(s) connexion(s) client
 				{
-					std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans pas server"  << std::endl;
+					// std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans pas server"  << std::endl;
 					while (true) // en 'rafale'
 					{
-						std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans while true"  << std::endl;
+						// std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans while true"  << std::endl;
 
                     	struct sockaddr_storage clientAddr;
                     	socklen_t addrLen = sizeof(clientAddr);
@@ -499,9 +499,9 @@ void server::run()
 									//on recup le message parser
 									message&	msg = (*itClient).getMessage();
 									std::string	cmdName = msg.getCommand();
-									std::cout << "LOG: cmd du msg dans RUN: " << cmdName << std::endl;
-									std::cout << "LOG: prm[0] du msg dans RUN: " << msg.getParams()[0] << std::endl;
-									std::cout << "LOG: prm.back() du msg dans RUN: " << msg.getParams().back() << ", avec size=" << msg.getParams().size()<< std::endl;
+									// std::cout << "LOG: cmd du msg dans RUN: " << cmdName << std::endl;
+									// std::cout << "LOG: prm[0] du msg dans RUN: " << msg.getParams()[0] << std::endl;
+									// std::cout << "LOG: prm.back() du msg dans RUN: " << msg.getParams().back() << ", avec size=" << msg.getParams().size()<< std::endl;
 
 									//verif d'auth
 									bool	needsAuth = true;
@@ -520,10 +520,10 @@ void server::run()
 									{
 										bool	res;
 										res = (this->*_cmdList[cmdName])((itClient), msg);
-										std::cout << "LOG: on passe dans la verif cmd avec res= " << res << std::endl;
+										// std::cout << "LOG: on passe dans la verif cmd avec res= " << res << std::endl;
 										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
 										{
-											std::cout << "LOG: on passe dans la verif PASS et !res avec cmdName:" << cmdName << "et res(true == 1 si la cmd a ete exec)= " << res << std::endl;
+											// std::cout << "LOG: on passe dans la verif PASS et !res avec cmdName:" << cmdName << "et res(true == 1 si la cmd a ete exec)= " << res << std::endl;
 											toRemove.push_back(itPollFd->fd);
 										}
 									}
@@ -538,7 +538,7 @@ void server::run()
 							if (itClient->getToRemove() == true)
 								toRemove.push_back(itPollFd->fd);
                             break;
-							
+
                     }
                 }
             }
