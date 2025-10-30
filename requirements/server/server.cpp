@@ -7,7 +7,7 @@ server::server(void) : _serverName("myIRCserver")
 {
 }
 
-server::server(char* port, char* pwd): _port(port) {
+server::server(char* port, char* pwd): _port(port), _serverName("serverIRC") {
 	std::stringstream ssMdp(pwd);
 	ssMdp >> this->_passWord;
 

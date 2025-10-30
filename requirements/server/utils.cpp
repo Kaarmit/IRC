@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aarmitan <aarmitan@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/29 10:59:52 by aarmitan         ###   ########.fr       */
+/*   Updated: 2025/10/30 16:37:10 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -218,7 +218,7 @@ bool	server::isChannel(std::string str) const
 // Envoi 001 à l’enregistrement
 void server::sendWelcomeIfRegistrationComplete(client* cli)
 {
-    if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty())
+    if (!cli->getRegistered() && !cli->getNick().empty() && !cli->getUser().empty() && !cli->getPass().empty())
     {
         cli->setRegistered(true);
 
@@ -228,8 +228,13 @@ void server::sendWelcomeIfRegistrationComplete(client* cli)
         // RPL_WELCOME (001)
         std::string line = ":" + _serverName + " 001 " + cli->getNick()
                          + " :Welcome to the Internet Relay Network !!! " + prefix + "\r\n";
-
         cli->enqueueLine(line);
+		//infos
+		std::string	line2 = ":" + _serverName + " 001 " + cli->getNick() + " :Channels: \n";
+		for (std::list<channel*>::iterator it = this->_channels.begin(); it != this->_channels.end(); it++)
+			std::cout << "---Name: " << (*it)->getChannelName() << ", topic: " << (*it)->getTopic() << std::endl;
+		line += "\r\n";
+        cli->enqueueLine(line2);
         polloutActivate(cli);
     }
 }
