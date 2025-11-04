@@ -6,7 +6,7 @@
 /*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/30 16:37:10 by daavril          ###   ########.fr       */
+/*   Updated: 2025/11/04 15:54:12 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -192,7 +192,7 @@ void server::broadcastJoin(client* cli, channel& chan)
 			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
 				cli->enqueueLine(line);
-				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor() + " " + chan.getTopicTimestampStr() + "\r\n"; //convertir de long/time_t a string
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor() + " " + chan.getTopicTimestampStr() + "\r\n";
 				cli->enqueueLine(line);
 			}
 			for (std::list<client*>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
