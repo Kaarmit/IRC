@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/04 15:54:12 by daavril          ###   ########.fr       */
+/*   Updated: 2025/11/06 12:16:46 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,34 +177,34 @@ void server::broadcastNickChange(client* cli, const std::string& oldNick, const 
     }
 }
 
-void server::broadcastJoin(client* cli, channel& chan)
+void server::broadcastJoin(client* cli, channel* chan)
 {
-	std::list<client*> chanCL = chan.getClientList();
+	std::list<client*> chanCL = chan->getClientList();
 	std::string line;
     for (std::list<client*>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan)
 	{
 		polloutActivate(*itChan);
-		line = userPrefix(cli) + " JOIN :" + chan.getChannelName() + "\r\n";
+		line = userPrefix(cli) + " JOIN :" + chan->getChannelName() + "\r\n";
 		(*itChan)->enqueueLine(line);
         if ((*itChan)->getFd() == cli->getFd())
 		{
-			if (!chan.getTopic().empty())
+			if (!chan->getTopic().empty())
 			{
-				line = this->_serverName + " 332 " + cli->getNick() + " " + chan.getChannelName() + " :" + chan.getTopic() + "\r\n";
+				line = this->_serverName + " 332 " + cli->getNick() + " " + chan->getChannelName() + " :" + chan->getTopic() + "\r\n";
 				cli->enqueueLine(line);
-				line = this->_serverName + " 333 " + cli->getNick() + " " + chan.getChannelName() + " " + chan.getTopicAuthor() + " " + chan.getTopicTimestampStr() + "\r\n";
+				line = this->_serverName + " 333 " + cli->getNick() + " " + chan->getChannelName() + " " + chan->getTopicAuthor() + " " + chan->getTopicTimestampStr() + "\r\n";
 				cli->enqueueLine(line);
 			}
 			for (std::list<client*>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
 			{
-				line = this->_serverName + " 353 " + cli->getNick() + " = " + chan.getChannelName() + ":";
+				line = this->_serverName + " 353 " + cli->getNick() + " = " + chan->getChannelName() + ":";
 				std::string present = (*itPrint)->getNick();
-				if (std::find(chan.getOpList().begin(), chan.getOpList().end(), *itPrint) != chan.getOpList().end())
+				if (std::find(chan->getOpList().begin(), chan->getOpList().end(), *itPrint) != chan->getOpList().end())
 					present.insert(present.begin(), '@');
 				line.append(" " + present);
 			}
 			cli->enqueueLine(line);
-			line = this->_serverName + " 366 " + cli->getNick() + " " + chan.getChannelName() + " :End of /NAMES list.\r\n";
+			line = this->_serverName + " 366 " + cli->getNick() + " " + chan->getChannelName() + " :End of /NAMES list.\r\n";
 			cli->enqueueLine(line);
 		}
     }

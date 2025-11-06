@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   join.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:41:37 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/10/28 18:36:07 by daavril          ###   ########.fr       */
+/*   Updated: 2025/11/06 12:15:00 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -145,7 +145,7 @@ bool	server::handleJoin(client* cli, message& msg)
 				cli->getChannelList().push_back(chanGiven[i]);
 				//add the client to the channel's client list
 				found->getClientList().push_back(cli);
-				broadcastJoin(cli, *found);
+				broadcastJoin(cli, found);
 			}
 		}
 	}
