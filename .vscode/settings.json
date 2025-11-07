@@ -69,6 +69,12 @@
 	"ostream": "cpp",
 	"ranges": "cpp",
 	"span": "cpp",
-	"iomanip": "cpp"
+	"iomanip": "cpp",
+	"chrono": "cpp",
+	"condition_variable": "cpp",
+	"fstream": "cpp",
+	"stop_token": "cpp",
+	"thread": "cpp",
+	"semaphore": "cpp"
 }
 }
