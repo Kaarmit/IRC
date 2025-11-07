@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:41:37 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/06 13:25:59 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/07 12:46:06 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,9 +45,16 @@ bool	server::handleJoin(client* cli, message& msg)
 		//remove client from all channels' client lists
 		for (std::list<channel*>::iterator it = this->_channels.begin(); it != this->_channels.end(); ++it)
 		{
-			message	msg;
-			msg.setParams((*it)->getChannelName());
-			(this->*_cmdList["PART"])(cli, msg);
+			std::list<client*>::iterator cChIt = findClientByFd((*it)->getClientList(), cli->getFd());
+			if (cChIt != (*it)->getClientList().end())
+				(*it)->remove(*cChIt);
+		}
+		// verif si chan vide et suppr le chan
+		for (std::list<channel*>::reverse_iterator it = this->_channels.rbegin(); it != this->_channels.rend(); ++it) {
+			if ((*it)->empty()) {
+				delete (*it);
+				this->_channels.remove(*it);
+			}
 		}
 		//clear client chan list
 		cli->getChannelList().clear();

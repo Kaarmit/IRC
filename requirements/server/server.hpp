@@ -49,6 +49,9 @@ class server
 
 		bool	isChannel(std::string str) const;
 		bool	basicChecks(client* cli, message& msg);
+
+		std::list<client*>::iterator 		findClientByFd(std::list<client*>& clients, int fd);
+
 		/*---*/
 
 		/*cmd*/

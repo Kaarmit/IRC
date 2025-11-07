@@ -352,7 +352,7 @@ void	server::initStopSignal(void) {
 
 /*----------HELPER FUNCTIONS-------------*/
 
-std::list<client*>::iterator 		findClientByFd(std::list<client*>& clients, int fd)
+std::list<client*>::iterator 		server::findClientByFd(std::list<client*>& clients, int fd)
 {
     for (std::list<client*>::iterator it = clients.begin(); it != clients.end(); ++it) {
         if ((*it)->getFd() == fd)
@@ -597,7 +597,8 @@ void server::run()
 				// supprimer le client correspondant de chaque chan auquel il appartient
 				for (std::list<channel*>::iterator chIt = this->_channels.begin(); chIt != this->_channels.end(); ++chIt) {
 					std::list<client*>::iterator cChIt = findClientByFd((*chIt)->getClientList(), fd);
-					if (cChIt != (*chIt)->getClientList().end())
+					std::list<client*>::iterator cinvChIt = findClientByFd((*chIt)->getInvitedList(), fd);
+					if (cChIt != (*chIt)->getClientList().end() || cinvChIt != (*chIt)->getInvitedList().end())
 						(*chIt)->remove(*cChIt);
 				}
 				// verif si chan vide et suppr le chan
