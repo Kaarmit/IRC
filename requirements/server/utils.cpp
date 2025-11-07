@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/06 12:16:46 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/06 13:39:08 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -186,14 +186,17 @@ void server::broadcastJoin(client* cli, channel* chan)
 		polloutActivate(*itChan);
 		line = userPrefix(cli) + " JOIN :" + chan->getChannelName() + "\r\n";
 		(*itChan)->enqueueLine(line);
+		line.clear();
         if ((*itChan)->getFd() == cli->getFd())
 		{
 			if (!chan->getTopic().empty())
 			{
 				line = this->_serverName + " 332 " + cli->getNick() + " " + chan->getChannelName() + " :" + chan->getTopic() + "\r\n";
 				cli->enqueueLine(line);
+				line.clear();
 				line = this->_serverName + " 333 " + cli->getNick() + " " + chan->getChannelName() + " " + chan->getTopicAuthor() + " " + chan->getTopicTimestampStr() + "\r\n";
 				cli->enqueueLine(line);
+				line.clear();
 			}
 			for (std::list<client*>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
 			{
@@ -204,8 +207,10 @@ void server::broadcastJoin(client* cli, channel* chan)
 				line.append(" " + present);
 			}
 			cli->enqueueLine(line);
+			line.clear();
 			line = this->_serverName + " 366 " + cli->getNick() + " " + chan->getChannelName() + " :End of /NAMES list.\r\n";
 			cli->enqueueLine(line);
+			line.clear();
 		}
     }
 }
@@ -302,14 +307,16 @@ void server::broadcastToChannel(channel* ch, const std::string& line)
 
 bool server::channelEmpty(channel* ch) const
 {
-    if (!ch) return true;
-    return ch->empty();
+    if (ch && ch->getClientList().empty())
+		return true;
+    return false;
 }
 
 // Supprime le salon de _channels et libère la mémoire
 void server::deleteChannel(channel* ch)
 {
-    if (!ch) return;
+    if (!ch) 
+		return;
     const std::string& name = ch->name();
 
     for (std::list<channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it)
