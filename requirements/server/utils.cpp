@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/06 13:39:08 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/07 16:33:39 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -183,7 +183,6 @@ void server::broadcastJoin(client* cli, channel* chan)
 	std::string line;
     for (std::list<client*>::iterator itChan = chanCL.begin(); itChan != chanCL.end(); ++itChan)
 	{
-		polloutActivate(*itChan);
 		line = userPrefix(cli) + " JOIN :" + chan->getChannelName() + "\r\n";
 		(*itChan)->enqueueLine(line);
 		line.clear();
@@ -198,20 +197,22 @@ void server::broadcastJoin(client* cli, channel* chan)
 				cli->enqueueLine(line);
 				line.clear();
 			}
+			line = this->_serverName + " 353 " + cli->getNick() + " = " + chan->getChannelName() + ":";
 			for (std::list<client*>::iterator itPrint = chanCL.begin(); itPrint != chanCL.end(); ++itPrint)
 			{
-				line = this->_serverName + " 353 " + cli->getNick() + " = " + chan->getChannelName() + ":";
 				std::string present = (*itPrint)->getNick();
 				if (std::find(chan->getOpList().begin(), chan->getOpList().end(), *itPrint) != chan->getOpList().end())
 					present.insert(present.begin(), '@');
 				line.append(" " + present);
 			}
+			line.append("\r\n");
 			cli->enqueueLine(line);
 			line.clear();
 			line = this->_serverName + " 366 " + cli->getNick() + " " + chan->getChannelName() + " :End of /NAMES list.\r\n";
 			cli->enqueueLine(line);
 			line.clear();
 		}
+		polloutActivate(*itChan);
     }
 }
 
