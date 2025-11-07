@@ -279,3 +279,11 @@ void	channel::removeOperator(client* cli)
         }
     }
 }
+
+int	channel::getNumberOfCli() const
+{
+	int	num = 0;
+	for (std::list<client*>::const_iterator it = _clientsList.begin(); it != _clientsList.end(); it++)
+		num += 1;
+	return num;
+}

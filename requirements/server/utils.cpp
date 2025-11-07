@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
+/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/06 13:39:08 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/07 17:27:00 by daavril          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -231,15 +231,35 @@ void server::sendWelcomeIfRegistrationComplete(client* cli)
         std::string prefix = userPrefix(cli);
 
         // RPL_WELCOME (001)
-        std::string line = ":" + _serverName + " 001 " + cli->getNick()
-                         + " :Welcome to the Internet Relay Network !!! " + prefix + "\r\n";
+        std::string line = ":" + _serverName + " 001 " + cli->getNick() + " :Welcome to the Internet Relay Network !!! " + prefix + "\r\n";
         cli->enqueueLine(line);
+		line.clear();
+		//(002)
+		line = ":" + _serverName + " 002 " + cli->getNick() + " :Your host is " + _serverName + ", running version 1.0\r\n";
+		cli->enqueueLine(line);
+		line.clear();
+		//(003)
+		line = ":" + _serverName + " 003 " + cli->getNick() + " :This server was created " + this->getServerTime() + "\r\n";
+		cli->enqueueLine(line);
+		line.clear();
+		//(004)
+		line = ":" + _serverName + " 004 " + cli->getNick() + _serverName + " " + "1.0 " + "o " + "itklo" + "\r\n";
+		cli->enqueueLine(line);
+		line.clear();
 		//infos
-		std::string	line2 = ":" + _serverName + " 001 " + cli->getNick() + " :Channels: \n";
+		line = ":" + _serverName + " 321 " + cli->getNick() + " Channels :Users Topic\r\n";
+        cli->enqueueLine(line);
+		line.clear();
+
 		for (std::list<channel*>::iterator it = this->_channels.begin(); it != this->_channels.end(); it++)
-			std::cout << "---Name: " << (*it)->getChannelName() << ", topic: " << (*it)->getTopic() << std::endl;
-		line += "\r\n";
-        cli->enqueueLine(line2);
+		{
+			line = ":" + _serverName + " 322 " + cli->getNick() + " " + (*it)->getChannelName() + " " + static_cast<char>((*it)->getNumberOfCli()) + " :" + (*it)->getTopic() + "\r\n";
+	        cli->enqueueLine(line);
+			line.clear();
+		}
+		line = ":" + _serverName + " 323 " + cli->getNick() + " :End of /LIST\r\n";
+        cli->enqueueLine(line);
+		line.clear();
         polloutActivate(cli);
     }
 }
@@ -315,7 +335,7 @@ bool server::channelEmpty(channel* ch) const
 // Supprime le salon de _channels et libère la mémoire
 void server::deleteChannel(channel* ch)
 {
-    if (!ch) 
+    if (!ch)
 		return;
     const std::string& name = ch->name();
 

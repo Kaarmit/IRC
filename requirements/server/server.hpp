@@ -24,7 +24,8 @@
 #include <stdlib.h>
 #include <poll.h>
 #include <csignal>
-#include <time.h>
+#include <ctime>
+#include <iomanip>
 
 class server
 {
@@ -37,6 +38,8 @@ class server
 		int															_serverFd;
 		char*														_port;
 		std::string													_serverName;
+		time_t														_serverTime;
+
 
 		/*Utils*/
 		void	polloutActivate(client* cli);
@@ -108,6 +111,10 @@ class server
     	//void removeClientFromChannel(channel* ch, client* cli);
     	bool channelEmpty(channel* ch) const;
     	void deleteChannel(channel* ch);
+
+		std::string	getServerTime() const;
+
+
 };
 
 bool isOP(client* cli, channel* ch);
