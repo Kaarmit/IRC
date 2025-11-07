@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/07 16:33:39 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/07 17:28:14 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,6 +177,17 @@ void server::broadcastNickChange(client* cli, const std::string& oldNick, const 
     }
 }
 
+void        server::broadcastJoinZero(client *cli) {
+	for (std::list<std::string>::iterator chanIt = cli->getChannelList().begin(); chanIt != cli->getChannelList().end(); ++chanIt)
+	{
+		channel* found = getChannelByName(*chanIt);
+		std::string line = userPrefix(cli) + " PART " + (*chanIt) + "\r\n";
+		broadcastToChannel(found, line);
+	}
+	return ;
+}
+
+
 void server::broadcastJoin(client* cli, channel* chan)
 {
 	std::list<client*> chanCL = chan->getClientList();
@@ -293,7 +304,8 @@ void server::broadcastToChannel(channel* ch, const std::string& line)
     for (std::list<client*>::iterator it = members.begin(); it != members.end(); ++it)
     {
         client* c = *it;
-        if (!c) continue;
+        if (!c) 
+			continue;
         c->enqueueLine(line);
         polloutActivate(c);
     }
