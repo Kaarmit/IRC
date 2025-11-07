@@ -35,7 +35,6 @@ bool server::handleUser(client* cli, message& msg)
 
     const std::vector<std::string>& p = msg.getParams();
 
-    // USER <username> <mode> <unused> <realname...>
     if (p.size() < 4) {
         std::string line = ":" + _serverName + " 461 " + target + " USER :Not enough parameters\r\n";
         cli->enqueueLine(line);
@@ -52,7 +51,7 @@ bool server::handleUser(client* cli, message& msg)
         return false;
     }
 
-    // Concaténer realname à partir de p[3], gérer ':' optionnel, trim espaces/CRLF
+
     std::string realname = p[3];
     for (size_t i = 4; i < p.size(); ++i) {
         realname += " ";
