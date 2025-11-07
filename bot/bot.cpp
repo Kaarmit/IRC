@@ -59,6 +59,9 @@ int	bot::createBotSocket(const char* port)
 		return (-3);
 	}
 
+	int	flags = fcntl(fd, F_GETFL, 0);
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
 	freeaddrinfo(res);
 	std::cout << "Bot is ready, connected to server: " << this->_ipAdrr << ":" << port << std::endl;
 	return fd;
@@ -111,14 +114,15 @@ void	bot::runBot()
 		{
         	case (0): // déconnexion
                 std::cout << "Deconnexion du server" << std::endl;
-				close(_botFd);
-                return;
+				g_running = false; break;
             case (-1): // erreur recv
 				if (errno == EWOULDBLOCK || errno == EAGAIN)
+				{
+					usleep(100000);
 					continue;
+				}
                 std::cerr << "Erreur recv() : " << strerror(errno) << std::endl;
-				close(_botFd);
-                return;
+				g_running = false; break;
             default: // message
 				buffer[n] = '\0';
 				std::string	msg(buffer);
@@ -132,9 +136,9 @@ void	bot::runBot()
 				}
 				else if (msg.find("!ping") != std::string::npos)
 					send(this->_botFd, "PRIVMSG #general :pong\r\n", strlen("PRIVMSG #general :pong\r\n"), 0);
-				else
-					send(this->_botFd, "PRIVMSG #general :Unkown comand...\r\n", strlen("Unkown comand...\r\n"), 0);
 		}
 	}
+	send(this->_botFd, "PRIVMSG #general :Arret du bot...\r\n", strlen("PRIVMSG #general :Arret du bot...\r\n"), 0);
+	send(this->_botFd, "QUIT\r\n", strlen("QUIT\r\n"), 0);
 	close(_botFd);
 }
