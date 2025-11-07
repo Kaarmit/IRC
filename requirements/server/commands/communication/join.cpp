@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:41:37 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/07 16:33:04 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/07 17:28:42 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,9 +56,9 @@ bool	server::handleJoin(client* cli, message& msg)
 				this->_channels.remove(*it);
 			}
 		}
+        broadcastJoinZero(cli);
 		//clear client chan list
 		cli->getChannelList().clear();
-		// // // BROADCAST PART
 		return true;
 	}
 	//avec une commande /join #chan1,#chan2 key1,key2
@@ -95,7 +95,7 @@ bool	server::handleJoin(client* cli, message& msg)
 			continue;
 		}
 		//search for channel name
-		channel* found = this->getChannelByName(chanGiven[i]);
+		channel* found = getChannelByName(chanGiven[i]);
 		if (!found)
 		{
 			//create the channel if itChan doesn't exist
