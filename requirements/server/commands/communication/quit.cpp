@@ -77,9 +77,9 @@ bool	server::handleQuit(client* cli, message& msg)
 	for (std::size_t i = 0; i < toDelete.size(); ++i) 
         deleteChannel(toDelete[i]);
 		
-	std::string err = "ERROR :Closing Link: " + cli->getNick() + " (" + reason + ")\r\n";
-	cli->enqueueLine(err);
-	polloutActivate(cli);
+	//std::string err = "ERROR :Closing Link: " + cli->getNick() + " (" + reason + ")\r\n";
+	//cli->enqueueLine(err);
+	//polloutActivate(cli);
     cli->setToRemove(true);
 	return true;
 }
