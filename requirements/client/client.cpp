@@ -139,7 +139,7 @@ std::list<std::string>&		client::getChannelList(void)
 	return (this->_channels);
 }
 
-void						client::enqueueLine(const std::string& ircLine)
+void						client::enqueueLine(const std::string ircLine)
 {
 	_outbuf += ircLine;
 }

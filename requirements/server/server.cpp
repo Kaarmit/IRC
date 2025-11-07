@@ -587,7 +587,6 @@ void server::run()
             for (std::list<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it) // liste de fd a supprimer
 			{
                 int fd = *it;
-                close(fd);
                 // supprimer le pollfd correspondant
 				for (std::vector<struct pollfd>::iterator pfIt = this->_fds.begin(); pfIt != this->_fds.end(); ++pfIt) {
 					if (pfIt->fd == fd) {
@@ -595,17 +594,30 @@ void server::run()
 						break;
 					}
 				}
-                // supprimer le client correspondant
-				for (std::list<client*>::iterator cIt = this->_clients.begin(); cIt != this->_clients.end(); ++cIt) {
-					if ((*cIt)->getFd() == fd) {
-						client* toDel = *cIt;
-						this->_clients.erase(cIt);//supp du server
+				// supprimer le client correspondant de chaque chan auquel il appartient
+				for (std::list<channel*>::iterator chIt = this->_channels.begin(); chIt != this->_channels.end(); ++chIt) {
+					std::list<client*>::iterator cChIt = findClientByFd((*chIt)->getClientList(), fd);
+					if (cChIt != (*chIt)->getClientList().end())
+						(*chIt)->remove(*cChIt);
+				}
+				// verif si chan vide et suppr le chan
+				for (std::list<channel*>::reverse_iterator chIt2 = this->_channels.rbegin(); chIt2 != this->_channels.rend(); ++chIt2) {
+					if ((*chIt2)->empty()) {
+						delete (*chIt2);
+						this->_channels.remove(*chIt2);
+					}
+				}
+                // supprimer le client correspondant du server
+				for (std::list<client*>::iterator cServIt = this->_clients.begin(); cServIt != this->_clients.end(); ++cServIt) {
+					if ((*cServIt)->getFd() == fd) {
+						client* toDel = *cServIt;
+						this->_clients.erase(cServIt);//supp du server
 						//supp des channels ou ce cIT est -> cli et op list
-						//supp le channel s'il est vide
 						delete toDel;
 						break;
 					}
 				}
+				close(fd);
             }
             toRemove.clear();
         }

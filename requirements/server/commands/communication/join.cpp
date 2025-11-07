@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:41:37 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/06 12:15:00 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/06 13:25:59 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,8 @@
 
 bool	server::handleJoin(client* cli, message& msg)
 {
+	if (!cli)
+		return false;
 	if (!cli->getRegistered())
 	{
 		polloutActivate(cli);
@@ -30,7 +32,6 @@ bool	server::handleJoin(client* cli, message& msg)
         cli->enqueueLine(line);
 		return false;
 	}
-
 	if (params.size() > 2)
 	{
 		polloutActivate(cli);

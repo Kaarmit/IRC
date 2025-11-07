@@ -85,7 +85,7 @@ class client
 		
 		double						getTime() const;
 
-		void						enqueueLine(const std::string& ircLine);
+		void						enqueueLine(const std::string ircLine);
 		bool 						hasPending() const;
     	void 						clearIfFlushed();
 
