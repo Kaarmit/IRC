@@ -49,6 +49,7 @@ class server
 		void 	broadcastNickChange(client* cli, const std::string& oldNick, const std::string& newNick);
 
 		void	broadcastJoin(client* cli, channel* chan);
+		void   	broadcastJoinZero(client *cli);
 
 		bool	isChannel(std::string str) const;
 		bool	basicChecks(client* cli, message& msg);
