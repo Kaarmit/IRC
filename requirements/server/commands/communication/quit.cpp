@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:46:42 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/06 13:57:57 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/07 12:27:55 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,9 +77,9 @@ bool	server::handleQuit(client* cli, message& msg)
 	for (std::size_t i = 0; i < toDelete.size(); ++i) 
         deleteChannel(toDelete[i]);
 		
-	// std::string err = "ERROR :Closing Link: " + cli->getNick() + " (" + reason + ")\r\n";
-	// cli->enqueueLine(err);
-	// polloutActivate(cli);
+	//std::string err = "ERROR :Closing Link: " + cli->getNick() + " (" + reason + ")\r\n";
+	//cli->enqueueLine(err);
+	//polloutActivate(cli);
     cli->setToRemove(true);
 	return true;
 }
