@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: daavril <daavril@student.42.fr>            +#+  +:+       +#+        */
+/*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/07 17:42:01 by daavril          ###   ########.fr       */
+/*   Updated: 2025/11/10 15:45:23 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,7 +110,7 @@ std::string userPrefix(const client* c)
     return (prefix);
 }
 
-client* server::getClientByF(int fd)
+client* server::getClientByFd(int fd)
 {
 	for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
@@ -205,6 +205,12 @@ void server::broadcastJoin(client* cli, channel* chan)
 				cli->enqueueLine(line);
 				line.clear();
 				line = this->_serverName + " 333 " + cli->getNick() + " " + chan->getChannelName() + " " + chan->getTopicAuthor() + " " + chan->getTopicTimestampStr() + "\r\n";
+				cli->enqueueLine(line);
+				line.clear();
+			}
+			else 
+			{
+				line = this->_serverName + " 331 " +  cli->getNick() + " " + chan->getChannelName() + " :No topic is set" + "\r\n";
 				cli->enqueueLine(line);
 				line.clear();
 			}

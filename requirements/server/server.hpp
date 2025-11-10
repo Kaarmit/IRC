@@ -104,7 +104,7 @@ class server
 		std::string						getPassWord() const;
 		char*							getPort() const;
 
-		client* getClientByF(int fd);
+		client* getClientByFd(int fd);
 		client* getClientByNick(const std::string& nick);
 		channel* getChannelByName(const std::string& name);
 
@@ -126,8 +126,7 @@ bool isValidNick(const std::string& s);
 bool isSpecialUser(char c);
 bool isValidUsername(const std::string& s);
 bool channelHasFd(const channel* ch, int fd);
-bool sharesAChannelByFd(const client* a, const client* b,
-                               const std::list<channel*>& channels);
+bool sharesAChannelByFd(const client* a, const client* b, const std::list<channel*>& channels);
 std::string userPrefix(const client* c);
 
 #endif
