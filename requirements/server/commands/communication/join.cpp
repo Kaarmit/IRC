@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/27 11:41:37 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/07 17:28:42 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/10 17:11:11 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,7 +87,7 @@ bool	server::handleJoin(client* cli, message& msg)
 	}
 	for (size_t i = 0; i < chanGiven.size(); ++i)
 	{
-		if (server::isChannel(chanGiven[i]) == false)
+		if (isChannel(chanGiven[i]) == false)
 		{
 			polloutActivate(cli);
         	std::string line = ":" + this->_serverName + " 476 " + cli->getNick() + " " + chanGiven[i] + " :Bad channel mask\r\n";
@@ -105,6 +105,7 @@ bool	server::handleJoin(client* cli, message& msg)
 			this->_channels.push_back(newChannel);
 			//add the channel to the client's channel list
 			cli->getChannelList().push_back(chanGiven[i]);
+			broadcastJoin(cli, newChannel);
 		}
 		else
 		{

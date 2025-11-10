@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/10 14:49:40 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/10 15:45:23 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -205,6 +205,12 @@ void server::broadcastJoin(client* cli, channel* chan)
 				cli->enqueueLine(line);
 				line.clear();
 				line = this->_serverName + " 333 " + cli->getNick() + " " + chan->getChannelName() + " " + chan->getTopicAuthor() + " " + chan->getTopicTimestampStr() + "\r\n";
+				cli->enqueueLine(line);
+				line.clear();
+			}
+			else 
+			{
+				line = this->_serverName + " 331 " +  cli->getNick() + " " + chan->getChannelName() + " :No topic is set" + "\r\n";
 				cli->enqueueLine(line);
 				line.clear();
 			}

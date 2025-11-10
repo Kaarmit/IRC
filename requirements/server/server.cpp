@@ -599,18 +599,23 @@ void server::run()
             for (std::list<int>::reverse_iterator it = toRemove.rbegin(); it != toRemove.rend(); ++it) // liste de fd a supprimer
 			{
                 int fd = *it;
-                // supprimer le pollfd correspondant
-				for (std::vector<struct pollfd>::iterator pfIt = this->_fds.begin(); pfIt != this->_fds.end(); ++pfIt) {
-					if (pfIt->fd == fd) {
-						this->_fds.erase(pfIt);
-						break;
-					}
-				}
 				// supprimer le client correspondant de chaque chan auquel il appartient
 				for (std::list<channel*>::iterator chIt = this->_channels.begin(); chIt != this->_channels.end(); ++chIt) {
 					std::list<client*>::iterator cChIt = findClientByFd((*chIt)->getClientList(), fd);
 					std::list<client*>::iterator cinvChIt = findClientByFd((*chIt)->getInvitedList(), fd);
-					if (cChIt != (*chIt)->getClientList().end() || cinvChIt != (*chIt)->getInvitedList().end())
+					//broadcast quit intempestif
+					if (cChIt != (*chIt)->getClientList().end())
+					{
+						for (std::list<client*>::iterator castIt = (*chIt)->getClientList().begin(); castIt != (*chIt)->getClientList().end(); ++castIt) 
+						{
+							if (cChIt != castIt)
+							{
+								std::string	quitMsg = userPrefix(*cChIt) + " QUIT\r\n";
+								send((*castIt)->getFd(), quitMsg.c_str(), quitMsg.size(), 0);
+							}
+						}
+					}
+					if (cChIt != (*chIt)->getClientList().end() || cinvChIt != (*chIt)->getInvitedList().end()) 
 						(*chIt)->remove(*cChIt);
 				}
 				// verif si chan vide et suppr le chan
@@ -626,6 +631,13 @@ void server::run()
 						client* toDel = *cServIt;
 						this->_clients.erase(cServIt);
 						delete toDel;
+						break;
+					}
+				}
+				// supprimer le pollfd correspondant
+				for (std::vector<struct pollfd>::iterator pfIt = this->_fds.begin(); pfIt != this->_fds.end(); ++pfIt) {
+					if (pfIt->fd == fd) {
+						this->_fds.erase(pfIt);
 						break;
 					}
 				}
