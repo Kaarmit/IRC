@@ -6,7 +6,7 @@
 /*   By: aistierl <aistierl@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/26 13:29:55 by aarmitan          #+#    #+#             */
-/*   Updated: 2025/11/07 17:28:14 by aistierl         ###   ########.fr       */
+/*   Updated: 2025/11/10 13:44:36 by aistierl         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -110,7 +110,7 @@ std::string userPrefix(const client* c)
     return (prefix);
 }
 
-client* server::getClientByF(int fd)
+client* server::getClientByFd(int fd)
 {
 	for (std::list<client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{

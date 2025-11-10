@@ -405,7 +405,7 @@ void server::run()
 			continue;
 		for (std::vector<pollfd>::iterator itPollFd = this->_fds.begin(); itPollFd != this->_fds.end(); ++itPollFd)
 		{
-			client* itClient = this->getClientByF(itPollFd->fd);//remplacer par ca pour ne pas utiliser un iterator (?)
+			client* itClient = this->getClientByFd(itPollFd->fd);//remplacer par ca pour ne pas utiliser un iterator (?)
 			if (!itClient && itPollFd != this->_fds.begin())
 			{
    				 toRemove.push_back(itPollFd->fd);
@@ -416,7 +416,6 @@ void server::run()
 				if (itPollFd == this->_fds.begin()) // erreur sur le socket serv
 				{
 					std::cerr << "Erreur sur le socket serveur, arret du serveur." << std::endl;
-					//close tous les fds
 					closeAllFds(this->_fds);
 					return;
 				}
@@ -426,14 +425,10 @@ void server::run()
     		}
 			if (itPollFd->revents & POLLIN)
 			{
-				// std::cout << "LOG: fd=" << itPollFd->fd << "revents= POLLIN"  << std::endl;
                 if (itPollFd == this->_fds.begin()) // signal sur socket serv = nouvelle(s) connexion(s) client
 				{
-					// std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans pas server"  << std::endl;
 					while (true) // en 'rafale'
 					{
-						// std::cout << "LOG: fd=" << itPollFd->fd << " est rentre dans while true"  << std::endl;
-
                     	struct sockaddr_storage clientAddr;
                     	socklen_t addrLen = sizeof(clientAddr);
 						int clientFd;
@@ -488,15 +483,14 @@ void server::run()
 							std::string& buffer = (*itClient).getFullMessage();
 							buffer += std::string(bufferRecv, ret);
 							size_t pos;
+							pos = buffer.find("\r\n");
 							while ((pos = buffer.find("\r\n")) != std::string::npos)
 							{
 							    std::string line = buffer.substr(0, pos);
 							    buffer.erase(0, pos + 2);
 							    std::cout << "Full msg: " << line << std::endl;
-
-							    if (parsing((itClient), line))
+							    if (parsing((itClient), line)) // only true if line has \r\n
 							    {
-									//on recup le message parser
 									message&	msg = (*itClient).getMessage();
 									std::string	cmdName = msg.getCommand();
 									// std::cout << "LOG: cmd du msg dans RUN: " << cmdName << std::endl;
@@ -521,7 +515,7 @@ void server::run()
 										bool	res;
 										res = (this->*_cmdList[cmdName])((itClient), msg);
 										// std::cout << "LOG: on passe dans la verif cmd avec res= " << res << std::endl;
-										if (cmdName == "PASS" && !res)//a voir pour les autres cmds aussi
+										if (cmdName == "PASS" && !res)
 										{
 											// std::cout << "LOG: on passe dans la verif PASS et !res avec cmdName:" << cmdName << "et res(true == 1 si la cmd a ete exec)= " << res << std::endl;
 											toRemove.push_back(itPollFd->fd);
@@ -543,13 +537,13 @@ void server::run()
                 }
             }
 			// POLLOUT & send
-			if (itClient /*!= this->_clients.end() */&& (itPollFd->revents & POLLOUT))
+			if (itClient && (itPollFd->revents & POLLOUT))
 			{
 				while ((*itClient).hasPending())
 				{
 					const char* base = itClient->getOutbuf().data() + itClient->getBytesSent();
 					size_t left = itClient->getOutbuf().size() - itClient->getBytesSent();
-
+					std::cout << "LOG: Envoi réponse au fd=" << itPollFd->fd << std::endl;
 					ssize_t n = send(itPollFd->fd, base, left, 0);
 					if (n > 0)
 					{
@@ -561,7 +555,7 @@ void server::run()
 					else
 					{
 						if (n < 0 && (errno != EAGAIN && errno != EWOULDBLOCK))
-							toRemove.push_back(itPollFd->fd); // mieux gerer cette erreur
+							toRemove.push_back(itPollFd->fd);
 						break;
 					}
 				}
@@ -612,8 +606,7 @@ void server::run()
 				for (std::list<client*>::iterator cServIt = this->_clients.begin(); cServIt != this->_clients.end(); ++cServIt) {
 					if ((*cServIt)->getFd() == fd) {
 						client* toDel = *cServIt;
-						this->_clients.erase(cServIt);//supp du server
-						//supp des channels ou ce cIT est -> cli et op list
+						this->_clients.erase(cServIt);
 						delete toDel;
 						break;
 					}
