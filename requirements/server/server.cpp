@@ -12,6 +12,8 @@ server::server(char* port, char* pwd): _port(port), _serverName("serverIRC") {
 	ssMdp >> this->_passWord;
 
 	std::cout << "Initialisation du Serveur IRC" << std::endl;
+	_serverTime = time(NULL);
+
 	this->initCmdServer();
 	if (!this->initServSocket(this->_port))
 		return ;
@@ -95,6 +97,22 @@ int	server::getServerFd() const
 char*	server::getPort() const
 {
 	return this->_port;
+}
+
+std::string	server::getServerTime() const
+{
+	struct tm datetime = *localtime(&_serverTime);
+
+	std::stringstream	oss;
+	oss << std::setfill('0')
+		<<std::setw(2) << datetime.tm_mday << "/"
+		<< std::setw(2) << (datetime.tm_mon + 1) << "/"
+		<< (datetime.tm_year + 1900) << " "
+		<< std::setw(2) << datetime.tm_hour << ":"
+		<< std::setw(2) << datetime.tm_min << ":"
+		<< std::setw(2) << datetime.tm_sec;
+
+	return oss.str();
 }
 
 /*-------------------------------------------------*/

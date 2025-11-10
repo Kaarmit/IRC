@@ -93,6 +93,8 @@ class channel
 
 		//peut faire des fonctions void addMember(client* cli) et void removeMember(client* cli) ici
 
+		int	getNumberOfCli() const;
+
 };
 
 #endif
